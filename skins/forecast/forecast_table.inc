@@ -26,7 +26,7 @@
 #set $t0 = time.time()
 
 ## Which forecasts should be displayed?
-#set $forecast_source = 'WU'
+#set $forecast_source = 'UKMO'
 
 ## How many forecast periods should be considered?
 ## Up to 40 for NWS, up to 240 for WU.  More periods take longer to generate.

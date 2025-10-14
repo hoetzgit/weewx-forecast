@@ -10,7 +10,7 @@ def loader():
 class ForecastInstaller(ExtensionInstaller):
     def __init__(self):
         super(ForecastInstaller, self).__init__(
-            version="3.5",
+            version="4.0",
             name='forecast',
             description='Generate and display weather and tide forecasts.',
             author="Matthew Wall",
@@ -39,8 +39,7 @@ class ForecastInstaller(ExtensionInstaller):
                     'OWM': {
                         'api_key': 'INSERT_OWM_API_KEY_HERE'},
                     'UKMO': {
-                        'api_key': 'INSERT_UKMO_API_KEY_HERE',
-                        'location': 'INSERT_UK_LOCATION_HERE'},
+                        'api_key': 'INSERT_UKMO_API_KEY_HERE'},
                     'Aeris': {
                         'client_id': 'INSERT_AERIS_CLIENT_ID_HERE',
                         'client_secret': 'INSERT_AERIS_CLIENT_SECRET_HERE'},

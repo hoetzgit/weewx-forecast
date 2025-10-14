@@ -17,14 +17,14 @@
 Display forecast data in strip format by including the strip template.
 </p>
 
-<div id='wu_strip'></div>
+<div id='ukmo_strip'></div>
 
 #set global $forecast_strip_settings = dict()
 #set global $forecast_strip_settings['orientation'] = 'vertical'
 #include "forecast_strip.inc"
 
 <script>
-populate_strip('wu_strip', 'WU');
+populate_strip('ukmo_strip', 'UKMO');
 </script>
 
 </body>

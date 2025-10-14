@@ -26,7 +26,7 @@
 #set $t0 = time.time()
 
 ## Which forecast should be displayed?
-#set $forecast_source = 'WU'
+#set $forecast_source = 'UKMO'
 
 ## How many days should be considered?
 #set $num_days = 7

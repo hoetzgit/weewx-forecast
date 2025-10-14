@@ -166,7 +166,7 @@ Configuration
         # The location can be one of the following:
         #   Boston,us            - city name, country code
         #   524901               - city ID
-        #   37.8,-122.4          - latitude,longitude
+        #   51.5081, -0.0759     - latitude,longitude
         # If no location is specified, station latitude and longitude are used
         #location = 524901
 
@@ -183,8 +183,10 @@ Configuration
         #   http://metoffice.gov.uk/datapoint
         api_key = API_KEY
 
-        # The location is one of the 5,000 or so locationIDs in the UK
-        #location = 3772
+        # The latitude and longitude of the point forecast
+        # If not specified, the lat long of the station is used.
+        #latitude = 51.5081
+        #longitude = -0.0759
 
         # How often to download the forecast, in seconds
         #interval = 10800
@@ -559,7 +561,7 @@ import weeutil.weeutil
 from weewx.engine import StdService
 from weewx.cheetahgenerator import SearchList
 
-VERSION = "3.5"
+VERSION = "4.0"
 
 if weewx.__version__ < "4":
     raise weewx.UnsupportedFeature(
@@ -599,11 +601,39 @@ def mkdir_p(path):
 #  sea_level
 #  grnd_level
 
-# UKMO defines the following:
-#  F - feels-like temperature, C
-#  V - visibility (UN, VP, PO, MO, GO, VG, EX)
-#  W - weather type (0-30)
-#
+# UKMO defines significantWeatherCode as:
+# 0 Clear night
+# 1 Sunny day
+# 2 Partly cloudy (night)
+# 3 Partly cloudy (day)
+# 4 Not used
+# 5 Mist
+# 6 Fog
+# 7 Cloudy
+# 8 Overcast
+# 9 Light rain shower (night)
+# 10 Light rain shower (day)
+# 11 Drizzle
+# 12 Light rain
+# 13 Heavy rain shower (night)
+# 14 Heavy rain shower (day)
+# 15 Heavy rain
+# 16 Sleet shower (night)
+# 17 Sleet shower (day)
+# 18 Sleet
+# 19 Hail shower (night)
+# 20 Hail shower (day)
+# 21 Hail
+# 22 Light snow shower (night)
+# 23 Light snow shower (day)
+# 24 Light snow
+# 25 Heavy snow shower (night)
+# 26 Heavy snow shower (day)
+# 27 Heavy snow
+# 28 Thunder shower (night)
+# 29 Thunder shower (day)
+# 30 Thunderstorm
+
 # textual description
 # wind direction is 16-point compass
 # air quality index
@@ -736,38 +766,38 @@ def mkdir_p(path):
    uvIndex                         daypart.uvIndex
    airQuality
 
-   database   ukmo     aeris         wwo            dark sky
-   ---------- -------- ------------- -------------- ---------
+   database   ukmo                   aeris         wwo            dark sky
+   ---------- ---------------------- ------------- -------------- ---------
 
-   hour       3        1,3,6,12,24   3,6,12,24      time
-   tempMin             minTempF                     temperatureLow
-   tempMax             maxTempF                     temperatureHigh
-   temp       T        tempF         tempF          temperature
-   dewpoint            dewpointF     DewPointF      dewPoint
-   humidity   H        humidity      humidity       humidity
-   windDir    D        windDir       winddir16Point windBearing
-   windSpeed  S        windSpeedMPH  windspeedMiles windSpeed
-   windGust   G        windGustMPH   WindGustMiles  windGust
+   hour       3                      1,3,6,12,24   3,6,12,24      time
+   tempMin    minScreenAirTemp       minTempF                     temperatureLow
+   tempMax    minScreenAirTemp       maxTempF                     temperatureHigh
+   temp                              tempF         tempF          temperature
+   dewpoint                          dewpointF     DewPointF      dewPoint
+   humidity   screenRelativeHumidity humidity      humidity       humidity
+   windDir    windDirectionFrom10m   windDir       winddir16Point windBearing
+   windSpeed  windSpeed10m           windSpeedMPH  windspeedMiles windSpeed
+   windGust   windGustSpeed10m       windGustMPH   WindGustMiles  windGust
    windChar   
    clouds                            cloudcover     cloudCover
-   pop        Pp       pop                          precipProbability
-   qpf                 precipIN      precipMM
-   qsf                 showIN                       precipAccumulation
-   rain       
-   rainshwrs  
-   tstms      
+   pop        probOfPrecipitation    pop                          precipProbability
+   qpf        totalPrecipAmount      precipIN      precipMM
+   qsf        totalSnowAmount        showIN                       precipAccumulation
+   rain       probOfRain
+   rainshwrs  probOfHeavyRain
+   tstms      probOfSferics 
    drizzle    
-   snow       
-   snowshwrs  
+   snow       probOfSnow
+   snowshwrs  probOfHeavySnow
    flurries   
    sleet      
    frzngrain  
    frzngdrzl  
-   hail       
+   hail       probOfHail
    obvis      
    windChill                         WindChillF
    heatIndex                         HeatIndexF
-   uvIndex    U        uvi                          uvIndex
+   uvIndex    uvIndex                uvi                          uvIndex
    airQuality 
 """
 
@@ -1050,6 +1080,14 @@ class Forecast(StdService):
         lon = config_dict['Station'].get('longitude', None)
         if lat is not None and lon is not None:
             return '%s,%s' % (lat, lon)
+        return None
+
+    @staticmethod
+    def get_latlong_from_station(config_dict):
+        lat = config_dict['Station'].get('latitude', None)
+        lon = config_dict['Station'].get('longitude', None)
+        if lat is not None and lon is not None:
+            return (lat, lon)
         return None
 
     @staticmethod
@@ -3038,75 +3076,44 @@ class OWMForecast(Forecast):
 
 
 # -----------------------------------------------------------------------------
-# UK Met Office 5-day/3-hour forecast
+# UK Met Office 7-day 3-hour forecast
 #
 # Forecasts from open UK Met Office (www.metoffice.gov.uk).  UKMO provides an
-# api that returns json/xml data.  This implementation uses the json format.
+# api that returns json data.
 #
 # For the API, see:
-#   http://www.metoffice.gov.uk/datapoint/product/uk-3hourly-site-specific-forecast/detailed-documentation
+#   https://datahub.metoffice.gov.uk/docs/f/category/site-specific/type/site-specific/api-documentation#get-/point/three-hourly
 #
-# 5day3hour -------------------------------------------------------------------
+# 7day3hour -------------------------------------------------------------------
 #
-# D  - wind direction, compass
-# F  - feels-like temperature, C
-# G  - wind gust, mph
-# H  - humidity, %
-# Pp - precipitation probability, %
-# S  - wind speed, mph
-# T  - temperature, C
-# V  - visibility
-# W  - weather type
-# U  - max uv index
-# $  - number of minutes after midnight GMT on day of period object
 #
-# weather types
-# NA - not available
-#  0 - clear night
-#  1 - sunny day
-#  2 - partly cloudy (night)
-#  3 - partly cloudy (day)
-#  4 - not used
-#  5 - mist
-#  6 - fog
-#  7 - cloudy
-#  8 - overcast
-#  9 - light rain shower (night)
-# 10 - light rain shower (day)
-# 11 - drizzle
-# 12 - light rain
-# 13 - heavy rain shower (night)
-# 14 - heavy rain shower (day)
-# 15 - heavy rain
-# 16 - sleet shower (night)
-# 17 - sleet shower (day)
-# 18 - sleet
-# 19 - hail shower (night)
-# 20 - hail shower (day)
-# 21 - hail
-# 22 - light snow shower (night)
-# 23 - light snow shower (day)
-# 24 - light snow
-# 25 - heavy snow shower (night)
-# 26 - heavy snow shower (day)
-# 27 - heavy snow
-# 28 - thunder shower (night)
-# 29 - thunder shower (day)
-# 30 - thunder
-#
-# visibility
-# UN - unknown
-# VP - very poor (less than 1 km)
-# PO - poor (1-4 km)
-# MO - moderate (4-10 km)
-# GO - good (10-20 km)
-# VG - very good (20-40 km)
-# EX - excellent (more than 40 km)
+# time": "2025-10-14T15:00Z",
+# maxScreenAirTemp": 9.5,
+# minScreenAirTemp": 8.73,
+# max10mWindGust": 2.25,
+# significantWeatherCode": 1,
+# totalPrecipAmount": 0,
+# totalSnowAmount": 0,
+# windSpeed10m": 1.32,
+# windDirectionFrom10m": 25,
+# windGustSpeed10m": 2.24,
+# visibility": 14141,
+# mslp": 100740,
+# screenRelativeHumidity": 96.07,
+# feelsLikeTemp": 8.43,
+# uvIndex": 1,
+# probOfPrecipitation": 4,
+# probOfSnow": 0,
+# probOfHeavySnow": 0,
+# probOfRain": 4,
+# probOfHeavyRain": 2,
+# probOfHail": 0,
+# probOfSferics": 1
 
 class UKMOForecast(Forecast):
 
     KEY = 'UKMO'
-    DEFAULT_URL = 'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/'
+    DEFAULT_URL = 'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/three-hourly'
 
     def __init__(self, engine, config_dict):
         super(UKMOForecast, self).__init__(engine, config_dict,
@@ -3115,48 +3122,56 @@ class UKMOForecast(Forecast):
         self.url = d.get('url', UKMOForecast.DEFAULT_URL)
         self.max_tries = int(d.get('max_tries', 3))
         self.api_key = d.get('api_key', None)
-        self.location = d.get('location', None)
+        self.latitude = d.get('latitude', None)
+        self.longitude = d.get('longitude', None)
+        if self.latitude is None or self.longitude is None:
+            self.latitude, self.longitude = Forecast.get_latlong_from_station(config_dict)
 
         errmsg = []
         if json is None:
             errmsg.append('json is not installed')
         if self.api_key is None or self.api_key.startswith('INSERT_'):
             errmsg.append('API key (api_key) is not specified')
-        if self.location is None:
-            errmsg.append('location is not specified')
+        if self.latitude is None:
+            errmsg.append('latitude is not specified')
+        if self.longitude is None:
+            errmsg.append('longitude is not specified')
         if errmsg:
             for e in errmsg:
                 logerr("%s: %s" % (self.method_id, e))
             logerr('%s: forecast will not be run' % self.method_id)
             return
 
-        loginf('%s: interval=%s max_age=%s api_key=%s location=%s' %
+        loginf('%s: interval=%s max_age=%s api_key=%s latitude=%s, longitude=%s' %
                (self.method_id, self.interval, self.max_age,
-                self.obfuscate(self.api_key), self.location))
+                self.obfuscate(self.api_key), self.latitude, self.longitude))
         self._bind()
 
     def get_forecast(self, dummy_event):
-        text = self.download(self.api_key, self.location,
+        text = self.download(self.api_key, self.latitude, self.longitude,
                              url=self.url, max_tries=self.max_tries)
         if text is None:
-            logerr('%s: no forecast data for %s from %s' %
-                   (self.method_id, self.location, self.url))
+            logerr('%s: no forecast data for %s from %s, %s' %
+                   (self.method_id, self.latitude, self.longitude, self.url))
             return None
         if self.save_raw:
             self.save_raw_forecast(text, basename='ukmo-raw')
-        records, msgs = self.parse(text, location=self.location)
+        logdbg('%s: UKMO get_forecast got forecast: %s' % (threading.currentThread().getName(), text))
+        records, msgs = self.parse(text, latitude=self.latitude, longitude=self.longitude)
         if self.save_failed and len(msgs) > 0:
             self.save_failed_forecast(text, basename='ukmo-fail', msgs=msgs)
         loginf('%s: got %d forecast records' % (self.method_id, len(records)))
         return records
 
     @staticmethod
-    def download(api_key, location, url=DEFAULT_URL, max_tries=3):
+    def download(api_key, latitude, longitude, url=DEFAULT_URL, max_tries=3):
         """Download a forecast from UK Met Office
 
         api_key - key for downloading
 
-        location - location identifier
+        latitude - latitude
+
+        longitude -longitude
 
         url - URL to the forecast service.  if anything other than the default
               is specified, that entire URL is used.  if the default is
@@ -3166,17 +3181,17 @@ class UKMOForecast(Forecast):
         max_tries - how many times to try before giving up
         """
 
-        u = '%s%s?res=3hourly&key=%s' % (url, location, api_key) \
+        u = '%s?dataSource=BD1&includeLocationName=true&latitude=%s&longitude=%s' % (url, latitude, longitude) \
             if url == UKMOForecast.DEFAULT_URL else url
-        masked = Forecast.get_masked_url(u, api_key)
-        loginf("%s: download forecast from '%s'" % (UKMOForecast.KEY, masked))
+        loginf("%s: download forecast from '%s'" % (UKMOForecast.KEY, u))
 
         for count in range(max_tries):
             try:
-                user_agent = {'User-Agent': 'Mozilla/5.0'}
-                requester = six.moves.urllib.request.Request(u, headers=user_agent)
+                header = {'apikey': api_key}
+                requester = six.moves.urllib.request.Request(u, headers=header)
                 response = six.moves.urllib.request.urlopen(requester)
-                return response.read().decode('utf-8')
+                d = response.read().decode('utf-8')
+                return d
             except (six.moves.urllib.error.URLError, socket.error,
                     six.moves.http_client.BadStatusLine, six.moves.http_client.IncompleteRead) as e:
                 logerr('%s: failed attempt %d to download forecast: %s' %
@@ -3186,7 +3201,7 @@ class UKMOForecast(Forecast):
         return None
 
     @staticmethod
-    def parse(text, now=None, location=None):
+    def parse(text, now=None, latitude=None, longitude=None):
         if now is None:
             now = int(time.time())
         msgs = []
@@ -3194,53 +3209,49 @@ class UKMOForecast(Forecast):
         cnt = 0
         fc = json.loads(text)
         try:
-            fc['SiteRep']['DV']['dataDate']
-            fc['SiteRep']['DV']['Location']['Period']
-            loc = fc['SiteRep']['DV']['Location']['i']
-            if loc != location:
-                loginf("%s: location mismatch: %s != %s" %
-                       (UKMOForecast.KEY, loc, location))
+            fc['features'][0]['properties']['modelRunDate']
+            fc['features'][0]['properties']['timeSeries']
+            loc = fc['features'][0]['properties']['location']['name']
         except KeyError as e:
             logerr("%s: missing field %s" % (UKMOForecast.KEY, e))
             return records, msgs
-        issued_ts = UKMOForecast.dd2ts(fc['SiteRep']['DV']['dataDate'])
-        for period in fc['SiteRep']['DV']['Location']['Period']:
-            day_ts = UKMOForecast.pv2ts(period['value'])
-            for rep in period['Rep']:
-                try:
-                    cnt += 1
-                    r = {}
-                    r['method'] = UKMOForecast.KEY
-                    r['usUnits'] = weewx.US
-                    r['dateTime'] = now
-                    r['issued_ts'] = issued_ts
-                    r['event_ts'] = Forecast.str2int(
-                        'offset', rep['$'], UKMOForecast.KEY) * 60 + day_ts
-                    r['duration'] = 3 * 3600
-                    r['temp'] = Forecast.str2float(
-                        'temp', rep['T'], UKMOForecast.KEY) * 9.0 / 5.0 + 32
-                    r['humidity'] = Forecast.str2int(
-                        'humidity', rep['H'], UKMOForecast.KEY)
-                    r['windSpeed'] = Forecast.str2float(
-                        'windSpeed', rep['S'], UKMOForecast.KEY)
-                    r['windGust'] = Forecast.str2float(
-                        'windGust', rep['G'], UKMOForecast.KEY)
-                    r['windDir'] = rep['D']
-                    r['pop'] = Forecast.str2int(
-                        'pop', rep['Pp'], UKMOForecast.KEY)
-                    r['uvIndex'] = Forecast.str2int(
-                        'uvIndex', rep['U'], UKMOForecast.KEY)
-                    # feelslike 'F'
-                    # weather type 'W'
-                    # visibility 'V'
-                    if location is not None:
-                        r['location'] = location
-                    records.append(r)
-                except KeyError as e:
-                    msg = '%s: failure in forecast period %d: %s' % (
-                        UKMOForecast.KEY, cnt, e)
-                    msgs.append(msg)
-                    logerr(msg)
+        issued_ts = UKMOForecast.utc2ts(fc['features'][0]['properties']['modelRunDate'])
+        for period in fc['features'][0]['properties']['timeSeries']:
+            day_ts = UKMOForecast.utc2ts(period['time'])
+            try:
+                cnt += 1
+                r = {}
+                r['method'] = UKMOForecast.KEY
+                r['usUnits'] = weewx.US
+                r['dateTime'] = now
+                r['issued_ts'] = issued_ts
+                r['event_ts'] = day_ts
+                r['duration'] = 3 * 3600
+                r['tempMin'] = period['minScreenAirTemp'] * 9.0 / 5.0 + 32
+                r['tempMax'] = period['maxScreenAirTemp'] * 9.0 / 5.0 + 32
+                r['temp'] = (r['tempMin'] + r['tempMax']) / 2.0
+                r['humidity'] = period['screenRelativeHumidity']
+                r['windSpeed'] = period['windSpeed10m'] * 0.621371
+                r['windGust'] = period['max10mWindGust'] * 0.621371
+                r['windDir'] = Forecast.deg2dir(period['windDirectionFrom10m'])
+                r['pop'] = period['probOfPrecipitation']
+                r['qpf'] = period['totalPrecipAmount'] * 0.0393701
+                r['qsf'] = period['totalSnowAmount'] * 0.0393701
+                r['rain']      =   UKMOForecast.code_from_precip_chance(period['probOfRain'])
+                r['rainshwrs'] =   UKMOForecast.code_from_precip_chance(period['probOfHeavyRain'])
+                r['tstms']     =   UKMOForecast.code_from_precip_chance(period['probOfSferics'])
+                r['snow']      =   UKMOForecast.code_from_precip_chance(period['probOfSnow'])
+                r['snowshwrs'] =   UKMOForecast.code_from_precip_chance(period['probOfHeavySnow'])
+                r['hail']      =   UKMOForecast.code_from_precip_chance(period['probOfHail'])
+                r['uvIndex'] = period['uvIndex']
+                if loc is not None:
+                    r['location'] = loc
+                records.append(r)
+            except KeyError as e:
+                msg = '%s: failure in forecast period %d: %s' % (
+                    UKMOForecast.KEY, cnt, e)
+                msgs.append(msg)
+                logerr(msg)
         return records, msgs
 
     @staticmethod
@@ -3255,6 +3266,26 @@ class UKMOForecast(Forecast):
         s = s.replace('Z', '')
         tt = time.strptime(s, '%Y-%m-%d')
         return int(calendar.timegm(tt))
+
+    @staticmethod
+    def utc2ts(s):
+        dt = datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.timestamp()
+
+    @staticmethod
+    def code_from_precip_chance(precip_chance):
+        if precip_chance < 20:
+            return None
+        elif precip_chance < 30:
+            return 'S'
+        elif precip_chance < 60:
+            return 'C'
+        elif precip_chance < 80:
+            return 'L'
+        elif precip_chance < 100:
+            return 'O'
+        else:
+            return 'D'
 
 
 # -----------------------------------------------------------------------------

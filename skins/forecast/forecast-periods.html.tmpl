@@ -22,7 +22,7 @@ illustrates the use of the forecast search list extension.
 #set $sources = {'WU': 'Weather Underground', 'OWM': 'Open WeatherMap', 'NWS': 'US National Weather Service', 'UKMO': 'UK Met Office'}
 #for $source in $sources
 <h2>$sources[$source]</h2>
-  #set $periods = $forecast.weather_periods($source, max_events=6)
+  #set $periods = $forecast.weather_periods($source, max_events=56)
   #if len($periods) > 0
 <p>
     #set $wts = ''
