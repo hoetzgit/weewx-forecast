@@ -67,41 +67,60 @@ If you want DS forecasts, obtain an api_key:
 
   https://darksky.net/dev/register
 
-If you want tide forecasts, install xtides:
-  sudo apt-get install xtide
 Then determine your location:
   http://tides.mobilegeographics.com/
 
-Note: current versions of debian (bookworm) do not include xtide.
-This is perhaps true of other distributions.
-You'll need to build it yourself and set the 'prog' variable in the xtide
-section.
-Example (building xtide)
-Note: the first two lines change to your home directory and set the mode on your home directory
-      such that the weewx user can find the tide program.
-  cd
-  chmod 755 .
-  wget https://flaterco.com/files/xtide/xtide-2.15.5.tar.xz
-  (decompress and then cd to xtide-2.15.5 directory)
-  sudo apt-get install libpng-dev
-  sudo apt-get install libtcd-dev
-  ./configure --with-x=no
-  make tide
-Example (setting prog variable to point to where you have built xtide):
+Note: current versions of debian (trixie) do not include xtide.
+This is likely of other distributions.
+Install it as follows:
+1. Execute the following commands
+   (It's probably easier to save this to a file and run as a script.)
+   ```
+   # Install dependencies
+   sudo apt install build-essential libpng-dev
+
+   # Download and install libtcd
+   cd /tmp
+   wget https://flaterco.com/files/xtide/libtcd-2.2.7-r2.tar.bz2
+   tar xf libtcd-2.2.7-r2.tar.bz2
+   cd libtcd-2.2.7
+   ./configure
+   make
+   sudo make install
+   sudo ldconfig
+
+   # Download and build xtide
+   cd /tmp
+   wget https://flaterco.com/files/xtide/xtide-2.15.6.tar.xz
+   tar xf xtide-2.15.6.tar.xz
+   cd xtide-2.15.6
+   ./configure --without-x --disable-shared CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib"
+   make
+   sudo make install
+
+   # Download harmonics data
+   cd /tmp
+   wget https://flaterco.com/files/xtide/harmonics-dwf-20251228-free.tar.xz
+   tar xf harmonics-dwf-20251228-free.tar.xz
+   cd harmonics-dwf-20251228
+   sudo mkdir -p /usr/local/share/xtide
+   sudo cp harmonics-dwf-20251228-free.tcd /usr/local/share/xtide/
+
+   # Create conf file
+   echo "/usr/local/share/xtide" | sudo tee /etc/xtide.conf
+   ```
+
+1. Verify xtide works by running the following as the
+   user that weewx runs under:
+   ```
+   /usr/local/bin/tide -l "Palo Alto Yacht Harbor"
+
+1. Set the prog variable to point to the built xtide):
 [Forecast]
     ...
     [[XTide]]
         location = Palo Alto Yacht Harbor, San Francisco Bay, California
-        prog = /home/jkline/software/xtide-2.15.5/tide
-You'll still need to install xtide-data.  Example:
-    apt install xtide-data
-and you'll need to create an /etc/xtide.conf file to tell xtide where to find the harmonic
-data you installed with xtide-data.  Example:
-/etc/xtide.conf:
-    /usr/share/xtide
-(xtide-data installs harmonic data in the /usr/share/xtide directory)
-
-
+        prog = /usr/local/bin/tide
 
 ===============================================================================
 Installation instructions:

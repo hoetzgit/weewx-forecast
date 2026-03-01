@@ -1,3 +1,6 @@
+4.1
+* Remove dependecy on six since Python 2 is long dead.
+
 3.5
 * Add install instructions for WeeWX 5.
 * Add instructions on how to build xtide if not available in OS distribution.
