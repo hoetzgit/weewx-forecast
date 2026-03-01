@@ -129,11 +129,11 @@ Installation instructions:
 
 For WeeWX 5:
 
-weectl extension install weewx-forecast-4.0.zip
+weectl extension install weewx-forecast.zip
 
 For WeeWX 4:
 
-wee_extension --install weewx-forecast-4.0.zip
+wee_extension --install weewx-forecast.zip
 
 2) modify weewx.conf for your location:
 
