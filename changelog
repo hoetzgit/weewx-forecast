@@ -1,3 +1,14 @@
+4.2
+* Handle change to how events are formatted in xtide 2.16
+
+  Location in xtide 2.15 and earlier substitute '|' for , in location:
+      Palo Alto Yacht Harbor| San Francisco Bay| California,2024-07-07,1:12 AM PDT,8.50 ft,High Tide
+  In xtide 2.16, location contains commas and the field is enclosed in quotes:
+      "Palo Alto Yacht Harbor, San Francisco Bay, California",2024-07-07,1:12 AM PDT,8.50 ft,"High Tide"
+
+* Convert readme.txt to markdown (README.md); update its xtide build
+  instructions to install xtide 2.16 and the latest harmonics data.
+
 4.1
 * Remove dependecy on six since Python 2 is long dead.
 

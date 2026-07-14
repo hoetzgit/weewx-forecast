@@ -1,5 +1,6 @@
 # installer for the forecast extension
 # Copyright 2014-2020 Matthew Wall
+# Copyright 2020-2026 John A Kline (john@johnkline.com)
 # Distributed under the terms of the GNU Public License (GPLv3)
 
 from weecfg.extension import ExtensionInstaller
@@ -10,7 +11,7 @@ def loader():
 class ForecastInstaller(ExtensionInstaller):
     def __init__(self):
         super(ForecastInstaller, self).__init__(
-            version="4.1",
+            version="4.2",
             name='forecast',
             description='Generate and display weather and tide forecasts.',
             author="Matthew Wall",

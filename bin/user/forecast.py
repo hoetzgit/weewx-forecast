@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2013-2020 Matthew Wall
+# Copyright 2020-2026 John A Kline (john@johnkline.com)
 # Distributed under the terms of the GNU Public License (GPLv3)
 """weewx module that provides forecasts
 
@@ -522,6 +523,7 @@ $summary.obvis           array
 
 import calendar
 import configobj
+import csv
 import datetime
 import gzip
 import hashlib
@@ -558,7 +560,7 @@ import weeutil.weeutil
 from weewx.engine import StdService
 from weewx.cheetahgenerator import SearchList
 
-VERSION = "4.1"
+VERSION = "4.2"
 
 if weewx.__version__ < "4":
     raise weewx.UnsupportedFeature(
@@ -3868,7 +3870,7 @@ class XTideForecast(Forecast):
             line = line.rstrip()
             if not line:
                 continue
-            fields = line.split(',')
+            fields = next(csv.reader([line]))
             if len(fields) != 5:
                 logdbg("expected 5 fields, found {}: {}".format(len(fields), line))
                 continue
@@ -3931,13 +3933,18 @@ class XTideForecast(Forecast):
             out = []
             for line in p.stdout:
                 line = line.decode('utf-8')
-                if line.count(',') == 4:
-                    out.append(line)
+                cols = next(csv.reader([line]))
+                if len(cols) == 5:
+                    # Ignore headers line if present
+                    if cols[0] != 'Location':
+                        out.append(line)
                 else:
                     logdbg("{}: ignoring line: {}".format(XT_KEY, line))
             if out:
                 logdbg("%s: got %d lines of output" % (XT_KEY, len(out)))
-                fields = out[0].split(',')
+                fields = next(csv.reader([out[0]]))
+                # Older versions of xtide substitute | for , in descriptions
+                # Newer version quote location and this will be a noop.
                 loc = fields[0].replace('|', ',')
                 loc = loc.replace(' - READ flaterco.com/pol.html', '')
                 if loc != location:
