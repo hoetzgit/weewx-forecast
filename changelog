@@ -1,3 +1,8 @@
+Unreleased
+* Fix the compare skin's obsolete doctype: index.html.tmpl declared an XHTML
+  1.0 Strict doctype, which HTML validators flag as obsolete.  It now uses the
+  HTML5 `<!DOCTYPE html>` (with `<html lang="en">`), matching the forecast skin.
+
 5.0
 * Dark Sky shut down its API.  The DS forecast source now points at Pirate
   Weather (https://pirateweather.net), a free, open drop-in that speaks the
