@@ -1,3 +1,71 @@
+5.0
+* Dark Sky shut down its API.  The DS forecast source now points at Pirate
+  Weather (https://pirateweather.net), a free, open drop-in that speaks the
+  same protocol.  No weewx.conf restructuring is required: the [[DS]] section,
+  the DSForecast service, and the 'DS' method tag are all unchanged.  Dark Sky
+  users just replace their api_key with a Pirate Weather api_key (get one at
+  https://pirate-weather.apiable.io/).  (The DS name is kept internally to
+  avoid breaking existing service lists; the source is Pirate Weather.)
+
+* Fix XTide event timestamps for a tide station in a different timezone than
+  the weewx server.  tide is now run in UTC (-z) and parsed as UTC, so
+  event times are correct regardless of the station's zone.
+
+* Fix XTide error handling and robustness: a failing `tide` invocation crashed
+  (joining bytes with str) instead of logging the error; the return-code check
+  never fired (it read returncode before the process had exited) and the child
+  was never reaped.  The command is now built without a shell (a location
+  containing quotes can no longer break or inject into it) and has a timeout.
+
+* Fix UKMO wind speed, which was reported about 3.6x too low: the m/s wind
+  field was converted to mph with the km/h factor.
+
+* Fix a crash (NameError) in the Aeris parser when the service returns an
+  error response with success=false and error=null.
+
+* Fix crashes on present-but-null fields in the OWM, UKMO, WWO and Pirate
+  Weather (formerly Dark Sky) parsers.
+
+* Fix Pirate Weather precipitation.  precipAccumulation is the TOTAL
+  precipitation for the period, in inches under us units -- not snowfall in cm.
+  It was recorded as snow (qsf) with the wrong (cm) unit conversion, and rain
+  quantity (qpf) was never recorded at all (e.g. a rainy day reported snow).
+  It is now routed to qpf or qsf by precipType, in inches.
+
+* Fix the NE compass boundary in deg2dir: bearings just above 65.5 degrees
+  were labeled E instead of NE (the boundary is 67.5 degrees).
+
+* Fix a NWS parse crash (KeyError) when a point-forecast block contains only
+  3-hourly or only 6-hourly rows.
+
+* Fix the daily weather summary: a period falling exactly on local midnight was
+  counted in two days (inflating qpf/qsf totals), and periods near midnight
+  were mis-grouped by an hour on daylight-saving-transition days.
+
+* Close the HTTP response in every download path (previously the socket
+  leaked), and do not sleep after the final failed save/prune retry.
+
+* Remove Python 2 remnants (the cjson/simplejson import fallback and the
+  related dead code); the extension is Python 3 only.
+
+* Fix several bugs that kept the compare skin's comparison report from working:
+  - ForecastPlotGenerator wrote its plot images to the top-level public_html
+    instead of the report's own HTML_ROOT (e.g. public_html/compare).
+  - the skin never rendered its index.html page because its generator list
+    omitted CheetahGenerator; it is now included.
+  - the plot fonts referenced the obsolete /usr/share/fonts/truetype/ttf-dejavu
+    path, so plots failed on current systems; now /usr/share/fonts/truetype/dejavu.
+  - a single-source plot (e.g. 'source = NWS') was iterated character by
+    character ('N', 'W', 'S') because a str passes the "is it iterable?" guard,
+    so the per-source comparison plots never found any data; a single source is
+    now wrapped in a list.
+  The compare skin also gains a Pirate Weather column.
+
+* The automated test suite now runs green: parser tests against freshly
+  captured responses (Pirate Weather, Weather Underground, UK Met Office, Open
+  Weather Map, Aeris), XTide against the real tide program, and the compare
+  skin's generator.  Pirate Weather gains its first tests.
+
 4.2
 * Handle change to how events are formatted in xtide 2.16
 

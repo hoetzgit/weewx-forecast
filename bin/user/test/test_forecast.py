@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright: 2013-2020 Matthew Wall
+# Copyright: 2020-2026 John A Kline (john@johnkline.com)
 # License: GPLv3
 
 """Tests for weewx forecasting module."""
@@ -7,24 +8,29 @@
 from __future__ import with_statement
 from __future__ import absolute_import
 from __future__ import print_function
+import json
 import math
 import os
 import shutil
-import string
 import sys
 import time
 import unittest
 
 import configobj
 
-# if you try to run these tests on python 2.5 you might have to do a json
-# import as it is done in forecast.py
-import json
 
 import weewx
 import weewx.engine as engine
 
 import forecast
+
+def find_tide():
+    """Locate the xtide 'tide' binary for the live XTide tests, or None so the
+    test skips.  Source builds land in /usr/local/bin; distro packages in
+    /usr/bin."""
+    return (shutil.which('tide')
+            or next((p for p in ('/usr/local/bin/tide', '/usr/bin/tide')
+                     if os.path.exists(p)), None))
 
 # to run manual tests, remove the x from xtest
 # parameters for manual testing:
@@ -585,12 +591,10 @@ class ForecastTest(unittest.TestCase):
                                  (filename, len(actual_lines), expected))
 
     def compareContents(self, filename, expected):
-        expected_lines = string.split(expected, '\n')
+        expected_lines = expected.splitlines()
 
         actual = open(filename)
-        actual_lines = []
-        for actual_line in actual:
-            actual_lines.append(actual_line)
+        actual_lines = actual.read().splitlines()
         actual.close()
         if len(actual_lines) != len(expected_lines):
             raise AssertionError('wrong number of lines in %s: %d != %d' %
@@ -601,7 +605,7 @@ class ForecastTest(unittest.TestCase):
         diffs = []
         for actual_line in actual_lines:
             try:
-                self.assertEqual(string.rstrip(actual_line),
+                self.assertEqual(actual_line.rstrip(),
                                  expected_lines[lineno])
             except AssertionError as e:
                 diffs.append('line %d: %s' % (lineno+1, e))
@@ -1064,7 +1068,7 @@ $forecast.zambretti.code
         data = readfile('PFM_GYX_SINGLE_2')
         matrix = forecast.NWSParseForecast(data, 'MEZ027')
         expected = {}
-        expected['humidity'] = [None, None, None, '76', '76', '90', '93', '100', '96', '97', '90', '84', '87', '93', '100', '100', '100', '97', 'MM', '100', 'MM', '100', None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+        expected['humidity'] = [None, None, None, '76', '76', '90', '93', '100', '96', '97', '90', '84', '87', '93', '100', '100', '100', '97', None, '100', None, '100', None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
         for label in expected.keys():
             self.assertEqual(matrix[label], expected[label])
 
@@ -1108,12 +1112,12 @@ $forecast.zambretti.code
                              template,
                              '''<html>
   <body>
-12-May-2013 02:00 10800     - 61.0F     - 87% 57.0F 8.0 mph     - S      -     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-12-May-2013 05:00 10800     - 59.0F     - 90% 56.0F 8.0 mph     - S      -     -     -     -     -     -     - {'rainshwrs': u'L'} PF
-12-May-2013 08:00 10800 57.0F 62.0F     - 81% 56.0F 10.0 mph     - SW  90% 0.14 in 0.14 in 0.14 in 0.00 in 0.00 in 0.00 in {'rainshwrs': u'L'} PF
-12-May-2013 11:00 10800     - 66.0F     - 68% 55.0F 11.0 mph     - W      -     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'}
-12-May-2013 14:00 10800     - 68.0F     - 51% 49.0F 16.0 mph     - W      -     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'}
-12-May-2013 17:00 10800     - 68.0F     - 37% 41.0F 18.0 mph     - W      -     -     -     -     -     -     - {'rainshwrs': u'S'}
+12-May-2013 02:00 10800     - 61.0F     - 87% 57.0F 8.0 mph     - S      -     -     -     -     -     -     - {'rainshwrs': 'C', 'tstms': 'S'} PF
+12-May-2013 05:00 10800     - 59.0F     - 90% 56.0F 8.0 mph     - S      -     -     -     -     -     -     - {'rainshwrs': 'L'} PF
+12-May-2013 08:00 10800 57.0F 62.0F     - 81% 56.0F 10.0 mph     - SW  90% 0.14 in 0.14 in 0.14 in 0.00 in 0.00 in 0.00 in {'rainshwrs': 'L'} PF
+12-May-2013 11:00 10800     - 66.0F     - 68% 55.0F 11.0 mph     - W      -     -     -     -     -     -     - {'rainshwrs': 'C', 'tstms': 'S'}
+12-May-2013 14:00 10800     - 68.0F     - 51% 49.0F 16.0 mph     - W      -     -     -     -     -     -     - {'rainshwrs': 'C', 'tstms': 'S'}
+12-May-2013 17:00 10800     - 68.0F     - 37% 41.0F 18.0 mph     - W      -     -     -     -     -     -     - {'rainshwrs': 'S'}
 12-May-2013 20:00 10800     - 61.0F 69.0F 41% 37.0F 14.0 mph 27.0 mph W  70% 0.05 in 0.05 in 0.05 in 0.00 in 0.00 in 0.00 in {}
 12-May-2013 23:00 10800     - 52.0F     - 48% 33.0F 11.0 mph     - W      -     -     -     -     -     -     - {}
 13-May-2013 02:00 10800     - 47.0F     - 53% 31.0F 10.0 mph     - W      -     -     -     -     -     -     - {}
@@ -1125,8 +1129,8 @@ $forecast.zambretti.code
 13-May-2013 20:00 10800     - 53.0F 61.0F 35% 26.0F 9.0 mph     - W  5% 0.00 in 0.00 in 0.00 in     -     -     - {}
 14-May-2013 02:00 21600     - 44.0F     -     - 35.0F     -     -       -     -     -     -     -     -     - {}
 14-May-2013 08:00 21600 41.0F 47.0F     -     - 33.0F     -     - NW GN 5%     -     -     -     -     -     - {}
-14-May-2013 14:00 21600     - 59.0F     -     - 29.0F     -     -       -     -     -     -     -     -     - {'rainshwrs': u'S'}
-14-May-2013 20:00 21600     - 53.0F 60.0F     - 32.0F     -     - NW LT 10%     -     -     -     -     -     - {'rainshwrs': u'S'}
+14-May-2013 14:00 21600     - 59.0F     -     - 29.0F     -     -       -     -     -     -     -     -     - {'rainshwrs': 'S'}
+14-May-2013 20:00 21600     - 53.0F 60.0F     - 32.0F     -     - NW LT 10%     -     -     -     -     -     - {'rainshwrs': 'S'}
 15-May-2013 02:00 21600     - 45.0F     -     - 33.0F     -     -       -     -     -     -     -     -     - {}
   </body>
 </html>
@@ -1143,7 +1147,7 @@ $forecast.zambretti.code
 forecast for BOX MAZ014 for the day 26-Aug-2013 00:00 as of 26-Aug-2013 07:19
 OV
 68.0F
-79.0F
+81.0F
 74.8F
 57.0F
 67.0F
@@ -1179,7 +1183,7 @@ SW
                                  'forecast.NWSForecast',
                                  FakeData.gen_fake_nws_data(),
                                  template,
-                                 539)
+                                 538)
 
 
     # -------------------------------------------------------------------------
@@ -1217,26 +1221,17 @@ SW
         data = readfile('WU_BOS_DAILY')
         records,msgs = forecast.WUForecast.parse(data, issued_ts=ts, now=ts)
         self.assertEqual(records[0:2], [
-                {'clouds': 'B2', 'temp': 61.5, 'hour': 23, 'event_ts': 1368673200, 'qpf': 0.10000000000000001, 'windSpeed': 15.0, 'pop': 50, 'dateTime': 1377298279, 'windDir': u'SSW', 'tempMin': 55.0, 'qsf': 0.0, 'windGust': 19.0, 'duration': 86400, 'humidity': 69, 'issued_ts': 1377298279, 'method': 'WU', 'usUnits': 1, 'tempMax': 68.0},
-                {'clouds': 'FW', 'temp': 65.5, 'hour': 23, 'event_ts': 1368759600, 'qpf': 0.0, 'windSpeed': 19.0, 'pop': 10, 'dateTime': 1377298279, 'windDir': 'W', 'tempMin': 54.0, 'qsf': 0.0, 'windGust': 23.0, 'duration': 86400, 'humidity': 42, 'issued_ts': 1377298279, 'method': 'WU', 'usUnits': 1, 'tempMax': 77.0}
-                ])
-
-    def test_wu_parse_forecast_hourly(self):
-        ts = 1378215570
-        data = readfile('WU_BOS_HOURLY')
-        records,msgs = forecast.WUForecast.parse(data, issued_ts=ts, now=ts)
-        self.assertEqual(records[0:2], [
-                {'windDir': u'S', 'clouds': 'OV', 'temp': 72.0, 'hour': 22, 'event_ts': 1378173600, 'uvIndex': 0, 'qpf': None, 'pop': 100, 'dateTime': 1378215570, 'dewpoint': 69.0, 'windSpeed': 3.0, 'obvis': None, 'rainshwrs': 'C', 'duration': 3600, 'tstms': 'S', 'humidity': 90, 'issued_ts': 1378215570, 'method': 'WU', 'usUnits': 1, 'qsf': None},
-                {'windDir': u'S', 'clouds': 'OV', 'temp': 72.0, 'hour': 23, 'event_ts': 1378177200, 'uvIndex': 0, 'qpf': 0.040000000000000001, 'pop': 80, 'dateTime': 1378215570, 'dewpoint': 68.0, 'windSpeed': 1.0, 'obvis': 'PF', 'rainshwrs': 'C', 'duration': 3600, 'tstms': 'S', 'humidity': 87, 'issued_ts': 1378215570, 'method': 'WU', 'usUnits': 1, 'qsf': None}
+                {'method': 'WU', 'usUnits': 1, 'dateTime': 1377298279, 'issued_ts': 1377298279, 'event_ts': 1784329200, 'hour': 19, 'duration': 43200, 'clouds': 'SC', 'tempMax': None, 'tempMin': 63.0, 'temp': 63, 'humidity': 61, 'pop': 1, 'qpf': 0.0, 'qsf': 0.0, 'windSpeed': 4.0, 'windDir': 'SW', 'heatIndex': 73.0, 'windChill': 63.0, 'uvIndex': 0.0},
+                {'method': 'WU', 'usUnits': 1, 'dateTime': 1377298279, 'issued_ts': 1377298279, 'event_ts': 1784372400, 'hour': 7, 'duration': 43200, 'clouds': 'OV', 'rain': 'C', 'tstms': 'C', 'tempMax': 84.0, 'tempMin': 68.0, 'temp': 84, 'humidity': 61, 'pop': 57, 'qpf': 0.1, 'qsf': 0.0, 'windSpeed': 18.0, 'windDir': 'SSW', 'heatIndex': 85.0, 'windChill': 68.0, 'uvIndex': 7.0}
                 ])
 
     def test_wu_bad_key(self):
-        '''confirm server response when bad api key is presented'''
+        '''a bad-api-key error response yields no records (hermetic; the file
+        WU_ERROR_NOKEY holds a real v3 "Invalid apiKey" body, no network).'''
         data = readfile('WU_ERROR_NOKEY')
-        fcast = forecast.WUForecast.download('foobar', '02139')
-        fcast_obj = json.loads(fcast)
-        error_obj = json.loads(data)
-        self.assertEqual(fcast_obj, error_obj)
+        records, msgs = forecast.WUForecast.parse(data)
+        self.assertEqual(records, [])
+        self.assertTrue(len(msgs) > 0)
 
     def test_wu_detect_download_errors(self):
         '''ensure proper behavior when server replies with error'''
@@ -1248,22 +1243,23 @@ SW
         '''verify the period behavior'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(PERIODS_TEMPLATE, 'WU', '1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(PERIODS_TEMPLATE, 'WU', '1784329200')
         self.runTemplateTest('test_wu_template_periods_daily',
                              'forecast.WUForecast', records, template,
                              '''<html>
   <body>
-01-Sep-2013 23:00 86400 73.0F 79.5F 86.0F 83%     - 10.0 mph 11.0 mph SSW  40% 0.38 in 0.38 in 0.38 in 0.00 in 0.00 in 0.00 in {}
-02-Sep-2013 23:00 86400 72.0F 76.5F 81.0F 91%     - 8.0 mph 10.0 mph S  60% 0.72 in 0.72 in 0.72 in 0.00 in 0.00 in 0.00 in {}
-03-Sep-2013 23:00 86400 61.0F 71.0F 81.0F 70%     - 8.0 mph 9.0 mph SW  50% 0.21 in 0.21 in 0.21 in 0.00 in 0.00 in 0.00 in {}
-04-Sep-2013 23:00 86400 59.0F 69.0F 79.0F 78%     - 10.0 mph 11.0 mph NW  0% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
-05-Sep-2013 23:00 86400 57.0F 66.0F 75.0F 90%     - 8.0 mph 10.0 mph W  0% 0.02 in 0.02 in 0.02 in 0.00 in 0.00 in 0.00 in {}
-06-Sep-2013 23:00 86400 54.0F 63.0F 72.0F 74%     - 4.0 mph 6.0 mph ESE  0% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
-07-Sep-2013 23:00 86400 63.0F 71.0F 79.0F 93%     - 11.0 mph 14.0 mph SW  0% 0.01 in 0.01 in 0.01 in 0.00 in 0.00 in 0.00 in {}
-08-Sep-2013 23:00 86400 61.0F 69.0F 77.0F 65%     - 7.0 mph 9.0 mph E  0% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
-09-Sep-2013 23:00 86400 61.0F 69.0F 77.0F 75%     - 3.0 mph 4.0 mph SW  0% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
-10-Sep-2013 23:00 86400 61.0F 70.0F 79.0F 86%     - 2.0 mph 3.0 mph SSW  0% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+17-Jul-2026 19:00 43200 54.0F 54.0F     - 82%     - 2.0 mph     - WNW  4% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+18-Jul-2026 07:00 43200 63.0F 69.0F 69.0F 77%     - 20.0 mph     - S  66% 0.18 in 0.18 in 0.18 in 0.00 in 0.00 in 0.00 in {'rain': 'L'}
+18-Jul-2026 19:00 43200 63.0F 63.0F 69.0F 96%     - 22.0 mph     - SW  68% 0.07 in 0.07 in 0.07 in 0.00 in 0.00 in 0.00 in {'rain': 'L'}
+19-Jul-2026 07:00 43200 56.0F 76.0F 76.0F 57%     - 16.0 mph     - WNW  18% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+19-Jul-2026 19:00 43200 56.0F 56.0F 76.0F 68%     - 11.0 mph     - WNW  2% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+20-Jul-2026 07:00 43200 58.0F 73.0F 73.0F 59%     - 13.0 mph     - WSW  2% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+20-Jul-2026 19:00 43200 58.0F 58.0F 73.0F 84%     - 10.0 mph     - SSW  7% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {}
+21-Jul-2026 07:00 43200 61.0F 71.0F 71.0F 78%     - 13.0 mph     - SSE  48% 0.02 in 0.02 in 0.02 in 0.00 in 0.00 in 0.00 in {'rain': 'C'}
+21-Jul-2026 19:00 43200 61.0F 61.0F 71.0F 97%     - 13.0 mph     - SSE  83% 0.49 in 0.49 in 0.49 in 0.00 in 0.00 in 0.00 in {'rain': 'O'}
+22-Jul-2026 07:00 43200 60.0F 71.0F 71.0F 88%     - 15.0 mph     - SSW  82% 0.34 in 0.34 in 0.34 in 0.00 in 0.00 in 0.00 in {'rain': 'O', 'tstms': 'C', 'hail': 'O'}
+22-Jul-2026 19:00 43200 60.0F 60.0F 71.0F 92%     - 13.0 mph     - SW  52% 0.10 in 0.10 in 0.10 in 0.00 in 0.00 in 0.00 in {'rain': 'C', 'tstms': 'C'}
   </body>
 </html>
 ''')
@@ -1272,34 +1268,34 @@ SW
         '''verify the summary behavior'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(SUMMARY_TEMPLATE, 'WU', '1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(SUMMARY_TEMPLATE, 'WU', '1784329200')
         self.runTemplateTest('test_wu_template_summary_daily',
                              'forecast.WUForecast', records, template,
                              '''<html>
   <body>
-forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
-B2
-79.5F
-79.5F
-79.5F
+forecast for  for the day 17-Jul-2026 00:00 as of 17-Jul-2026 19:00
+SC
+54.0F
+54.0F
+54.0F
     -
     -
     -
-83%
-83%
-83%
-10.0 mph
-10.0 mph
-10.0 mph
-11.0 mph
-SSW
-  SSW
+82%
+82%
+82%
+2.0 mph
+2.0 mph
+2.0 mph
+    -
+WNW
+  WNW
 
-40%
-0.38 in
-0.38 in
-0.38 in
+4%
+0.00 in
+0.00 in
+0.00 in
 0.00 in
 0.00 in
 0.00 in
@@ -1311,34 +1307,34 @@ SSW
         '''verify the summary behavior'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(SUMMARY_TEMPLATE, 'WU', '1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(SUMMARY_TEMPLATE, 'WU', '1784329200')
         self.runTemplateTest('test_wu_template_summary_daily_metric',
                              'forecast.WUForecast', records, template,
                              '''<html>
   <body>
-forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
-B2
-26.4C
-26.4C
-26.4C
+forecast for  for the day 17-Jul-2026 00:00 as of 17-Jul-2026 19:00
+SC
+12.2C
+12.2C
+12.2C
     -
     -
     -
-83%
-83%
-83%
-16 kph
-16 kph
-16 kph
-18 kph
-SSW
-  SSW
+82%
+82%
+82%
+3 kph
+3 kph
+3 kph
+    -
+WNW
+  WNW
 
-40%
-9.7 mm
-9.7 mm
-9.7 mm
+4%
+0.0 mm
+0.0 mm
+0.0 mm
 0.0 mm
 0.0 mm
 0.0 mm
@@ -1350,22 +1346,22 @@ SSW
         '''verify the summary behavior using periods'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(SUMMARY_PERIODS_TEMPLATE,'WU','1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(SUMMARY_PERIODS_TEMPLATE,'WU','1784329200')
         self.runTemplateTest('test_wu_template_summary_periods_daily',
                              'forecast.WUForecast', records, template,
                              '''<html>
   <body>
-forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
-79.5F
-79.5F
-79.5F
+forecast for  for the day 17-Jul-2026 00:00 as of 17-Jul-2026 19:00
+54.0F
+54.0F
+54.0F
     -
     -
     -
-10.0 mph
-10.0 mph
-10.0 mph
+2.0 mph
+2.0 mph
+2.0 mph
   </body>
 </html>
 ''')
@@ -1374,22 +1370,22 @@ forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
         '''verify the summary behavior using periods'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(SUMMARY_PERIODS_TEMPLATE,'WU','1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(SUMMARY_PERIODS_TEMPLATE,'WU','1784329200')
         self.runTemplateTest('test_wu_template_summary_periods_daily_metric',
                              'forecast.WUForecast', records, template,
                              '''<html>
   <body>
-forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
-26.4C
-26.4C
-26.4C
+forecast for  for the day 17-Jul-2026 00:00 as of 17-Jul-2026 19:00
+12.2C
+12.2C
+12.2C
     -
     -
     -
-16 kph
-16 kph
-16 kph
+3 kph
+3 kph
+3 kph
   </body>
 </html>
 ''', units=weewx.METRIC)
@@ -1398,121 +1394,11 @@ forecast for  for the day 01-Sep-2013 00:00 as of 01-Sep-2013 23:00
         '''exercise the period and summary template elements'''
         data = readfile('WU_TENANTS_HARBOR_DAILY')
         records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378090800, now=1378090800)
-        template = create_template(TABLE_TEMPLATE, 'WU', '1378090800')
+            data, issued_ts=1784329200, now=1784329200)
+        template = create_template(TABLE_TEMPLATE, 'WU', '1784329200')
         self.runTemplateLineTest('test_wu_template_table_daily',
                                  'forecast.WUForecast', records, template,
-                                 304)
-
-    def test_wu_template_periods_hourly(self):
-        '''verify the period behavior for hourly'''
-        data = readfile('WU_BOS_HOURLY')
-        records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378173600, now=1378173600)
-        template = create_template(PERIODS_TEMPLATE, 'WU', '1378173600')
-        self.runTemplateTest('test_wu_template_periods_hourly',
-                             'forecast.WUForecast', records, template,
-                             '''<html>
-  <body>
-02-Sep-2013 22:00 3600     - 72.0F     - 90% 69.0F 3.0 mph     - S  100%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'}
-02-Sep-2013 23:00 3600     - 72.0F     - 87% 68.0F 1.0 mph     - S  80% 0.04 in 0.04 in 0.04 in     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 00:00 3600     - 72.0F     - 86% 68.0F 2.0 mph     - S  80%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 01:00 3600     - 72.0F     - 85% 68.0F 4.0 mph     - S  80%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 02:00 3600     - 72.0F     - 84% 68.0F 5.0 mph     - WNW  80% 0.04 in 0.04 in 0.04 in 0.00 in 0.00 in 0.00 in {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 03:00 3600     - 72.0F     - 82% 67.0F 5.0 mph     - WNW  80%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 04:00 3600     - 72.0F     - 81% 67.0F 6.0 mph     - WNW  80%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 05:00 3600     - 72.0F     - 79% 66.0F 6.0 mph     - W  80% 0.00 in 0.00 in 0.00 in     -     -     - {'tstms': u'IS', 'rainshwrs': u'S'} PF
-03-Sep-2013 06:00 3600     - 72.0F     - 80% 66.0F 6.0 mph     - W  80%     -     -     -     -     -     - {'tstms': u'IS', 'rainshwrs': u'S'} PF
-03-Sep-2013 07:00 3600     - 73.0F     - 80% 66.0F 7.0 mph     - W  80%     -     -     -     -     -     - {'tstms': u'IS', 'rainshwrs': u'S'} PF
-03-Sep-2013 08:00 3600     - 73.0F     - 81% 66.0F 7.0 mph     - WSW  70% 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in 0.00 in {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 09:00 3600     - 74.0F     - 78% 67.0F 8.0 mph     - WSW  70%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 10:00 3600     - 76.0F     - 75% 67.0F 8.0 mph     - WSW  70%     -     -     -     -     -     - {'tstms': u'S', 'rainshwrs': u'C'} PF
-03-Sep-2013 11:00 3600     - 77.0F     - 72% 68.0F 9.0 mph     - WSW  60% 0.07 in 0.07 in 0.07 in     -     -     - {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 12:00 3600     - 79.0F     - 68% 67.0F 10.0 mph     - WSW  60%     -     -     -     -     -     - {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 13:00 3600     - 80.0F     - 64% 67.0F 10.0 mph     - WSW  60%     -     -     -     -     -     - {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 14:00 3600     - 82.0F     - 60% 66.0F 11.0 mph     - WSW  60% 0.07 in 0.07 in 0.07 in 0.00 in 0.00 in 0.00 in {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 15:00 3600     - 81.0F     - 60% 65.0F 11.0 mph     - WSW  60%     -     -     -     -     -     - {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 16:00 3600     - 80.0F     - 61% 65.0F 10.0 mph     - WSW  60%     -     -     -     -     -     - {'tstms': u'C', 'rainshwrs': u'L'}
-03-Sep-2013 17:00 3600     - 79.0F     - 61% 64.0F 10.0 mph     - WSW  60% 0.09 in 0.09 in 0.09 in     -     -     - {'tstms': u'S', 'rainshwrs': u'C'}
-  </body>
-</html>
-''')
-
-    def test_wu_template_summary_hourly(self):
-        '''verify the summary behavior for hourly'''
-        data = readfile('WU_BOS_HOURLY')
-        records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378173600, now=1378173600)
-        template = create_template(SUMMARY_TEMPLATE, 'WU', '1378173600')
-        self.runTemplateTest('test_wu_template_summary_hourly',
-                             'forecast.WUForecast', records, template,
-                             '''<html>
-  <body>
-forecast for  for the day 02-Sep-2013 00:00 as of 02-Sep-2013 22:00
-OV
-72.0F
-72.0F
-72.0F
-68.0F
-69.0F
-68.3F
-86%
-90%
-88%
-1.0 mph
-3.0 mph
-2.0 mph
-    -
-S
-  S
-
-100%
-0.04 in
-0.04 in
-0.04 in
-    -
-    -
-    -
-  rainshwrs
-  tstms
-  PF
-  </body>
-</html>
-''')
-
-    def test_wu_template_table_hourly(self):
-        '''exercise the period and summary template elements for hourly'''
-        data = readfile('WU_BOS_HOURLY')
-        records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378173600, now=1378173600)
-        template = create_template(TABLE_TEMPLATE, 'WU', '1378173600')
-        self.runTemplateLineTest('test_wu_template_table_hourly',
-                                 'forecast.WUForecast', records, template,
-                                 514)
-
-    def test_wu_template_table(self):
-        '''exercise the period and summary template elements'''
-        data = readfile('WU_BOS_HOURLY')
-        records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1378173600, now=1378173600)
-        template = create_template(TABLE_TEMPLATE, 'WU', '1378173600')
-        template = template.replace('period.event_ts.raw',
-                                    'period.event_ts.raw, periods=$periods')
-        self.runTemplateLineTest('test_wu_template_table',
-                                 'forecast.WUForecast', records, template,
-                                 514)
-
-    def test_wu_inorther26(self):
-        '''test forecast for inorther26'''
-        data = readfile('WU_INORTHER26_HOURLY')
-        records,msgs = forecast.WUForecast.parse(
-            data, issued_ts=1384053615, now=1384053615)
-        template = create_template(TABLE_TEMPLATE, 'WU', '1384053615')
-        template = template.replace('period.event_ts.raw',
-                                    'period.event_ts.raw, periods=$periods')
-        self.runTemplateLineTest('test_wu_inorther26',
-                                 'forecast.WUForecast', records, template,
-                                 493)
+                                 242)
 
 
     # -------------------------------------------------------------------------
@@ -1572,6 +1458,26 @@ S
         ])
 
 
+    def test_owm_bos_2(self):
+        """parse a current owm 5-day forecast (OWM_BOS_2 captured 2026-07-18,
+        a summer forecast: exercises rain/qpf but has no snow)."""
+        ts = 1453669141
+        data = readfile('OWM_BOS_2')
+        records, msgs = forecast.OWMForecast.parse(data, issued_ts=ts, now=ts)
+        self.assertEqual(len(records), 40)
+        self.assertEqual(records[0:2], [
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784343600, 'duration': 10800, 'clouds': 'B2', 'temp': 67.55000000000001, 'humidity': 57, 'windSpeed': 3.04223296, 'windDir': 'S'},
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784354400, 'duration': 10800, 'clouds': 'B2', 'temp': 66.37999999999994, 'humidity': 56, 'windSpeed': 4.96599792, 'windDir': 'SW'}
+        ])
+        # check for rain (qpf) in the forecast
+        self.assertEqual(records[31:35], [
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784678400, 'duration': 10800, 'clouds': 'OV', 'temp': 70.68199999999996, 'humidity': 85, 'windSpeed': 7.58321304, 'windDir': 'SE', 'qpf': 0.010236220472440946},
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784689200, 'duration': 10800, 'clouds': 'OV', 'temp': 68.44999999999999, 'humidity': 99, 'windSpeed': 9.46223928, 'windDir': 'E', 'qpf': 0.16929133858267717},
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784700000, 'duration': 10800, 'clouds': 'OV', 'temp': 72.13999999999993, 'humidity': 98, 'windSpeed': 13.13081432, 'windDir': 'SW', 'qpf': 0.6059055118110237},
+            {'method': 'OWM', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784710800, 'duration': 10800, 'clouds': 'OV', 'temp': 71.04199999999997, 'humidity': 97, 'windSpeed': 9.283284400000001, 'windDir': 'SW', 'qpf': 0.010236220472440946}
+        ])
+
+
     # -------------------------------------------------------------------------
     # UKMO tests
     # -------------------------------------------------------------------------
@@ -1594,15 +1500,18 @@ S
         records, msgs = forecast.UKMOForecast.parse(fcast)
         print(records)
 
-    def test_ukmo_heathrow_1(self):
-        """parse a ukmo 5-day forecast"""
+    def test_ukmo_redwood_city(self):
+        """parse a ukmo DataHub site-specific three-hourly forecast.
+        UKMO_REDWOOD_CITY was captured 2026-07-18 from the live DataHub API for
+        the local station; regenerate it (and these expected values) if the
+        DataHub response format changes."""
         ts = 1453669141
-        data = readfile('UKMO_HEATHROW_1')
+        data = readfile('UKMO_REDWOOD_CITY')
         records, msgs = forecast.UKMOForecast.parse(data, now=ts)
-        self.assertEqual(len(records), 35)
+        self.assertEqual(len(records), 57)
         self.assertEqual(records[0:2], [
-            {'dateTime': 1453669141, 'duration': 10800, 'event_ts': 1453820400, 'humidity': 92, 'issued_ts': 1453834800, 'method': 'UKMO', 'pop': 60, 'temp': 51.8, 'usUnits': 1, 'uvIndex': 1, 'windDir': u'SSW', 'windGust': 40.0, 'windSpeed': 25.0},
-            {'dateTime': 1453669141, 'duration': 10800, 'event_ts': 1453831200, 'humidity': 93, 'issued_ts': 1453834800, 'method': 'UKMO', 'pop': 61, 'temp': 51.8, 'usUnits': 1, 'uvIndex': 0, 'windDir': u'SSW', 'windGust': 40.0, 'windSpeed': 25.0}
+            {'method': 'UKMO', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1784336400.0, 'event_ts': 1784332800.0, 'duration': 10800, 'tempMin': 65.48, 'tempMax': 67.85600000000001, 'temp': 66.668, 'humidity': 59.15, 'windSpeed': 9.10432952, 'windGust': 23.08517952, 'windDir': 'W', 'pop': 0, 'qpf': 0.0, 'qsf': 0.0, 'rain': None, 'rainshwrs': None, 'tstms': None, 'snow': None, 'snowshwrs': None, 'hail': None, 'uvIndex': 4, 'location': 'Redwood City'},
+            {'method': 'UKMO', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1784336400.0, 'event_ts': 1784343600.0, 'duration': 10800, 'tempMin': 60.692, 'tempMax': 66.866, 'temp': 63.778999999999996, 'humidity': 74.58, 'windSpeed': 7.13582584, 'windGust': 19.26001896, 'windDir': 'W', 'pop': 0, 'qpf': 0.0, 'qsf': 0.0, 'rain': None, 'rainshwrs': None, 'tstms': None, 'snow': None, 'snowshwrs': None, 'hail': None, 'uvIndex': 1, 'location': 'Redwood City'}
         ])
 
     def test_ukmo_period_date(self):
@@ -1667,11 +1576,12 @@ S
         ts = 1453669141
         data = readfile('AERIS_02139_1')
         records, msgs = forecast.AerisForecast.parse(data, issued_ts=ts, now=ts)
-        self.assertEqual(len(records), 374)
+        # AERIS_02139_1 recaptured 2026-07-18 from the live Aeris/Xweather API
+        self.assertEqual(len(records), 376)
         self.assertEqual(msgs, [])
         self.assertEqual(records[0:2], [
-            {'windDir': u'W', 'clouds': u'SC', 'qsf': 0.0, 'temp': 41.0, 'event_ts': 1453914000, 'uvIndex': 2, 'qpf': 0.0, 'pop': 2.0, 'dateTime': 1453669141, 'dewpoint': 27.0, 'tempMin': 41.0, 'windSpeed': 14.0, 'windGust': 23.0, 'duration': 3600, 'humidity': 55, 'issued_ts': 1453669141, 'method': 'Aeris', 'usUnits': 1, 'tempMax': 41.0},
-            {'windDir': u'W', 'clouds': u'SC', 'qsf': 0.0, 'temp': 43.0, 'event_ts': 1453917600, 'uvIndex': 1, 'qpf': 0.0, 'pop': 2.0, 'dateTime': 1453669141, 'dewpoint': 25.0, 'tempMin': 43.0, 'windSpeed': 14.0, 'windGust': 24.0, 'duration': 3600, 'humidity': 51, 'issued_ts': 1453669141, 'method': 'Aeris', 'usUnits': 1, 'tempMax': 43.0}
+            {'method': 'Aeris', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784343600, 'duration': 3600, 'tempMax': 70.0, 'tempMin': 70.0, 'temp': 70.0, 'pop': 0.0, 'qpf': 0.0, 'humidity': 52, 'uvIndex': 0, 'qsf': 0.0, 'dewpoint': 52.0, 'windDir': 'SW', 'windGust': 6.0, 'windSpeed': 4.0, 'clouds': 'SC'},
+            {'method': 'Aeris', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784347200, 'duration': 3600, 'tempMax': 69.0, 'tempMin': 69.0, 'temp': 69.0, 'pop': 0.0, 'qpf': 0.0, 'humidity': 56, 'uvIndex': 0, 'qsf': 0.0, 'dewpoint': 53.0, 'windDir': 'SW', 'windGust': 5.0, 'windSpeed': 4.0, 'clouds': 'SC'}
         ])
 
 
@@ -1717,6 +1627,61 @@ S
 
 
     # -------------------------------------------------------------------------
+    # Pirate Weather tests (the DS source; Pirate Weather is Dark Sky-compatible)
+    # -------------------------------------------------------------------------
+
+    def test_ds_bos_daily(self):
+        """parse a Pirate Weather daily forecast (DS_BOS_DAILY captured
+        2026-07-18 from the live api.pirateweather.net for Boston)."""
+        ts = 1453669141
+        data = readfile('DS_BOS_DAILY')
+        records, msgs = forecast.DSForecast.parse(
+            data, issued_ts=ts, now=ts, fc_type='daily')
+        self.assertEqual(msgs, [])
+        self.assertEqual(len(records), 8)
+        self.assertEqual(records[0:2], [
+            {'method': 'DS', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784260800, 'hour': 0, 'duration': 86400, 'clouds': 'FW', 'tempMin': 66.11, 'tempMax': 84.11, 'temp': 75.11, 'dewpoint': 53.9, 'humidity': 49, 'pop': 0, 'qpf': 0.0, 'windSpeed': 5.99, 'windDir': 'NW', 'windGust': 10.32, 'uvIndex': 7},
+            {'method': 'DS', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784347200, 'hour': 0, 'duration': 86400, 'clouds': 'B1', 'tempMin': 70.97, 'tempMax': 86.27, 'temp': 78.62, 'dewpoint': 63.66, 'humidity': 68, 'pop': 43, 'qpf': 0.6505, 'windSpeed': 9.89, 'windDir': 'SW', 'windGust': 17.34, 'uvIndex': 5}
+        ])
+
+    def test_ds_bos_hourly(self):
+        """parse a Pirate Weather hourly forecast (DS_BOS_HOURLY captured
+        2026-07-18 from the live api.pirateweather.net for Boston)."""
+        ts = 1453669141
+        data = readfile('DS_BOS_HOURLY')
+        records, msgs = forecast.DSForecast.parse(
+            data, issued_ts=ts, now=ts, fc_type='hourly')
+        self.assertEqual(msgs, [])
+        self.assertEqual(len(records), 48)
+        self.assertEqual(records[0:2], [
+            {'method': 'DS', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784343600, 'hour': 23, 'duration': 3600, 'clouds': 'SC', 'temp': 71.87, 'dewpoint': 54.41, 'humidity': 54, 'windSpeed': 1.34, 'windDir': 'SW', 'windGust': 2.46, 'pop': 0, 'qpf': 0.0, 'uvIndex': 0},
+            {'method': 'DS', 'usUnits': 1, 'dateTime': 1453669141, 'issued_ts': 1453669141, 'event_ts': 1784347200, 'hour': 0, 'duration': 3600, 'clouds': 'SC', 'temp': 70.61, 'dewpoint': 54.95, 'humidity': 56, 'windSpeed': 1.12, 'windDir': 'W', 'windGust': 2.01, 'pop': 0, 'qpf': 0.0, 'uvIndex': 0}
+        ])
+
+    def test_ds_precip_type_routing(self):
+        """precipAccumulation is total precip in inches; it must go to qpf for
+        rain and to qsf only for snow (the live summer fixtures contain no
+        snow, so exercise the routing directly)."""
+        def period(precip_type):
+            return {'time': 1784260800, 'cloudCover': 0.5,
+                    'temperatureLow': 30.0, 'temperatureHigh': 34.0,
+                    'dewPoint': 25.0, 'humidity': 0.9,
+                    'precipProbability': 0.9, 'precipAccumulation': 1.5,
+                    'precipType': precip_type, 'windSpeed': 5.0,
+                    'windGust': 8.0, 'windBearing': 270, 'uvIndex': 1}
+        obj = {'daily': {'data': [period('rain'), period('snow')]}}
+        records, msgs = forecast.DSForecast.parse(
+            json.dumps(obj), issued_ts=1, now=1, fc_type='daily')
+        self.assertEqual(msgs, [])
+        # rain -> qpf (in inches, no cm conversion), not qsf
+        self.assertEqual(records[0]['qpf'], 1.5)
+        self.assertNotIn('qsf', records[0])
+        # snow -> qsf, not qpf
+        self.assertEqual(records[1]['qsf'], 1.5)
+        self.assertNotIn('qpf', records[1])
+
+
+    # -------------------------------------------------------------------------
     # xtide tests
     #
     # xtide must be installed: apt-get install xtide
@@ -1741,89 +1706,102 @@ S
         et = '2013-08-22 12:00'
         tt = time.strptime(et, '%Y-%m-%d %H:%M')
         ets = time.mktime(tt)
-        lines = f.generate('Tenants Harbor', sts=sts, ets=ets)
-        if lines is None:
+        prog = find_tide()
+        if prog is None:
             # xtide is not installed
             return
+        lines = f.generate('Tenants Harbor', sts=sts, ets=ets, prog=prog)
+        if lines is None:
+            # xtide ran but produced no usable output
+            return
 
-        expect = '''Tenants Harbor| Maine,2013.08.20,16:47,-0.71 ft,Low Tide
-Tenants Harbor| Maine,2013.08.20,19:00,,Moonrise
-Tenants Harbor| Maine,2013.08.20,19:32,,Sunset
-Tenants Harbor| Maine,2013.08.20,21:45,,Full Moon
-Tenants Harbor| Maine,2013.08.20,23:04,11.56 ft,High Tide
-Tenants Harbor| Maine,2013.08.21,05:24,-1.35 ft,Low Tide
-Tenants Harbor| Maine,2013.08.21,05:47,,Sunrise
-Tenants Harbor| Maine,2013.08.21,06:28,,Moonset
-Tenants Harbor| Maine,2013.08.21,11:38,10.73 ft,High Tide
-Tenants Harbor| Maine,2013.08.21,17:41,-0.95 ft,Low Tide
-Tenants Harbor| Maine,2013.08.21,19:31,,Sunset
-Tenants Harbor| Maine,2013.08.21,19:33,,Moonrise
-Tenants Harbor| Maine,2013.08.21,23:57,11.54 ft,High Tide
-Tenants Harbor| Maine,2013.08.22,05:48,,Sunrise
-Tenants Harbor| Maine,2013.08.22,06:13,-1.35 ft,Low Tide
-Tenants Harbor| Maine,2013.08.22,07:40,,Moonset
+        # Times are UTC (tide is run with -z); values reflect the harmonics
+        # file installed on this host (regenerate if the harmonics change).
+        expect = '''"Tenants Harbor, Maine",2013.08.20,20:44,-0.66 ft,"Low Tide"
+"Tenants Harbor, Maine",2013.08.20,23:00,,"Moonrise"
+"Tenants Harbor, Maine",2013.08.20,23:32,,"Sunset"
+"Tenants Harbor, Maine",2013.08.21,01:45,,"Full Moon"
+"Tenants Harbor, Maine",2013.08.21,03:02,11.56 ft,"High Tide"
+"Tenants Harbor, Maine",2013.08.21,09:21,-1.32 ft,"Low Tide"
+"Tenants Harbor, Maine",2013.08.21,09:47,,"Sunrise"
+"Tenants Harbor, Maine",2013.08.21,10:28,,"Moonset"
+"Tenants Harbor, Maine",2013.08.21,15:37,10.72 ft,"High Tide"
+"Tenants Harbor, Maine",2013.08.21,21:39,-0.90 ft,"Low Tide"
+"Tenants Harbor, Maine",2013.08.21,23:31,,"Sunset"
+"Tenants Harbor, Maine",2013.08.21,23:33,,"Moonrise"
+"Tenants Harbor, Maine",2013.08.22,03:56,11.55 ft,"High Tide"
+"Tenants Harbor, Maine",2013.08.22,09:48,,"Sunrise"
+"Tenants Harbor, Maine",2013.08.22,10:12,-1.33 ft,"Low Tide"
+"Tenants Harbor, Maine",2013.08.22,11:40,,"Moonset"
 '''
         self.assertEqual(''.join(lines), expect)
 
         # verify that records are created properly
-        expect = [{'hilo': 'L', 'offset': '-0.71', 'event_ts': 1377031620,
+        expect = [{'hilo': 'L', 'offset': -0.66, 'event_ts': 1377031440,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'H', 'offset': '11.56', 'event_ts': 1377054240,
+                  {'hilo': 'H', 'offset': 11.56, 'event_ts': 1377054120,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'L', 'offset': '-1.35', 'event_ts': 1377077040,
+                  {'hilo': 'L', 'offset': -1.32, 'event_ts': 1377076860,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'H', 'offset': '10.73', 'event_ts': 1377099480,
+                  {'hilo': 'H', 'offset': 10.72, 'event_ts': 1377099420,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'L', 'offset': '-0.95', 'event_ts': 1377121260,
+                  {'hilo': 'L', 'offset': -0.90, 'event_ts': 1377121140,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'H', 'offset': '11.54', 'event_ts': 1377143820,
+                  {'hilo': 'H', 'offset': 11.55, 'event_ts': 1377143760,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' },
-                  {'hilo': 'L', 'offset': '-1.35', 'event_ts': 1377166380,
+                  {'hilo': 'L', 'offset': -1.33, 'event_ts': 1377166320,
                    'method': 'XTide', 'usUnits': 1, 'issued_ts': 1377043837,
                    'dateTime': 1377043837, 'location': 'Tenants Harbor' }]
-        records = f.parse(lines, now=1377043837)
+        records = f.parse(lines, now=1377043837, location='Tenants Harbor')
         self.assertEqual(records, expect)
 
     def test_xtide_nonfree(self):
-        """these tests work only if xtide non-free sources are installed"""
+        """generate() as a staticmethod for a free US station (Palo Alto)"""
         tdir = get_testdir('test_xtide_nonfree')
         rmtree(tdir)
 
+        prog = find_tide()
+        if prog is None:
+            # xtide is not installed
+            return
         st = '2013-08-20 12:00'
         tt = time.strptime(st, '%Y-%m-%d %H:%M')
         sts = time.mktime(tt)
         et = '2013-08-22 12:00'
         tt = time.strptime(et, '%Y-%m-%d %H:%M')
         ets = time.mktime(tt)
-        lines = forecast.XTideForecast.generate('Bangor, Northern Ireland',
-                                                sts=sts, ets=ets)
+        lines = forecast.XTideForecast.generate('Palo Alto Yacht Harbor',
+                                                sts=sts, ets=ets, prog=prog)
         if lines is None:
-            # non-free data are not installed
+            # xtide ran but produced no usable output
             return
 
+        # Times are UTC (tide is run with -z); values reflect the harmonics
+        # file installed on this host (regenerate if the harmonics change).
         actual = ''.join(lines) if lines else ''
-        expect = '''Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,17:07,0.62 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,19:56,,Moonrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,20:42,,Sunset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,23:24,3.58 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,02:45,,Full Moon
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,05:45,0.27 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,06:09,,Sunrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,06:47,,Moonset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,11:53,3.34 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,17:52,0.55 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,20:21,,Moonrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,20:40,,Sunset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,00:09,3.65 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,06:11,,Sunrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,06:29,0.24 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,08:10,,Moonset
+        expect = '''"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.20,20:11,7.48 ft,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,01:45,,"Full Moon"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:30,,"Moonrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:39,1.10 ft,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:53,,"Sunset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,07:41,8.85 ft,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,13:29,,"Sunrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,14:15,,"Moonset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,15:14,-0.33 ft,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,20:50,7.77 ft,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,02:52,,"Sunset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,03:07,,"Moonrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,03:30,0.89 ft,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,08:33,8.47 ft,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,13:30,,"Sunrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,15:23,,"Moonset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,15:56,-0.10 ft,"Low Tide"
 '''
         self.assertEqual(actual, expect)
 
@@ -1847,8 +1825,13 @@ Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,08:10,,Moonset
         et = '2013-08-22 12:00'
         tt = time.strptime(et, '%Y-%m-%d %H:%M')
         ets = time.mktime(tt)
-        lines = f.generate('Bangor, North', sts=sts, ets=ets)
-        self.assertEquals(lines, None)
+        prog = find_tide()
+        if prog is None:
+            # xtide is not installed
+            return
+        # a bogus location makes tide error out, so generate returns None
+        lines = f.generate('Bangor, North', sts=sts, ets=ets, prog=prog)
+        self.assertEqual(lines, None)
 
     def test_xtide_templates(self):
         self.runTemplateTest('test_xtide_templates',
@@ -1931,7 +1914,7 @@ $forecast.xtide(-1, from_ts=1377043837).dateTime
 
         config_dict = create_config(tdir, 'forecast.XTideForecast')
         config_dict['Forecast']['XTide'] = {}
-        config_dict['Forecast']['XTide']['location'] = 'Bangor, Northern Ireland'
+        config_dict['Forecast']['XTide']['location'] = 'Palo Alto Yacht Harbor'
 
         # create a simulator with which to test
         e = engine.StdEngine(config_dict)
@@ -1944,60 +1927,77 @@ $forecast.xtide(-1, from_ts=1377043837).dateTime
         et = '2013-08-22 12:00'
         tt = time.strptime(et, '%Y-%m-%d %H:%M')
         ets = time.mktime(tt)
-        lines = f.generate('Bangor, Northern Ireland', sts=sts, ets=ets)
+        prog = find_tide()
+        if prog is None:
+            # xtide is not installed
+            return
+        # Palo Alto Yacht Harbor is a free US station; force metric output
+        # (-u m) so this exercises parse()'s meter -> US conversion.  It is a
+        # Pacific station run under the suite's Eastern TZ, so it also
+        # exercises the UTC (-z) timezone handling.
+        lines = f.generate('Palo Alto Yacht Harbor', sts=sts, ets=ets,
+                           prog=prog, units='m')
         if lines is None:
-            # non-free data are not installed
+            # xtide ran but produced no usable output
             return
 
-        expect = '''Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,17:07,0.62 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,19:56,,Moonrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,20:42,,Sunset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.20,23:24,3.58 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,02:45,,Full Moon
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,05:45,0.27 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,06:09,,Sunrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,06:47,,Moonset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,11:53,3.34 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,17:52,0.55 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,20:21,,Moonrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.21,20:40,,Sunset
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,00:09,3.65 m,High Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,06:11,,Sunrise
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,06:29,0.24 m,Low Tide
-Bangor| Northern Ireland - READ flaterco.com/pol.html,2013.08.22,08:10,,Moonset
+        # Times are UTC (tide is run with -z); values reflect the harmonics
+        # file installed on this host (regenerate if the harmonics change).
+        expect = '''"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.20,20:11,2.28 m,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,01:45,,"Full Moon"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:30,,"Moonrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:39,0.33 m,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,02:53,,"Sunset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,07:41,2.70 m,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,13:29,,"Sunrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,14:15,,"Moonset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,15:14,-0.10 m,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.21,20:50,2.37 m,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,02:52,,"Sunset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,03:07,,"Moonrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,03:30,0.27 m,"Low Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,08:33,2.58 m,"High Tide"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,13:30,,"Sunrise"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,15:23,,"Moonset"
+"Palo Alto Yacht Harbor, San Francisco Bay, California",2013.08.22,15:56,-0.03 m,"Low Tide"
 '''
         self.assertEqual(''.join(lines), expect)
 
-        # verify that records are created properly
-        expect = [{'event_ts': 1377032820, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'L', 'offset': 2.0341207379999999,
+        # verify that records are created properly (metric offsets are
+        # converted from meters to US feet by parse())
+        expect = [{'event_ts': 1377029460, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'H', 'offset': 7.480333552885034,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377055440, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'H', 'offset': 11.745406842000001,
+                  {'event_ts': 1377052740, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'L', 'offset': 1.0826798563386235,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377078300, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'L', 'offset': 0.88582677300000012,
+                  {'event_ts': 1377070860, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'H', 'offset': 8.858289733679646,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377100380, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'H', 'offset': 10.958005266000001,
+                  {'event_ts': 1377098040, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'L', 'offset': -0.32808480495109804,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377121920, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'L', 'offset': 1.8044619450000001,
+                  {'event_ts': 1377118200, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'H', 'offset': 7.775609877341023,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377144540, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'H', 'offset': 11.975065635,
+                  {'event_ts': 1377142200, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'L', 'offset': 0.8858289733679646,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
-                  {'event_ts': 1377167340, 'dateTime': 1377043837,
-                   'location': 'Bangor, Northern Ireland',
-                   'hilo': 'L', 'offset': 0.78740157600000005,
+                  {'event_ts': 1377160380, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'H', 'offset': 8.464587967738328,
+                   'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1},
+                  {'event_ts': 1377186960, 'dateTime': 1377043837,
+                   'location': 'Palo Alto Yacht Harbor',
+                   'hilo': 'L', 'offset': -0.0984254414853294,
                    'issued_ts': 1377043837, 'method': 'XTide', 'usUnits': 1}]
-        records = f.parse(lines, now=1377043837)
+        records = f.parse(lines, now=1377043837, location='Palo Alto Yacht Harbor')
         self.assertEqual(records, expect)
 
     # -------------------------------------------------------------------------
@@ -2117,7 +2117,15 @@ $ts $a.sunrise $a.sunset $gmstr
     def setup_pruning_tests(self, tdir, numfc):
         config_dict = create_config(tdir, 'forecast.XTideForecast')
         config_dict['Forecast']['XTide'] = {}
-        config_dict['Forecast']['XTide']['location'] = 'Boston'
+        # 'Tenants Harbor' is an exact free-harmonics station that yields real
+        # tide events; 'Boston' is ambiguous to xtide and returns none, which
+        # made these tests degenerate (0 records, DB never grows to vacuum).
+        config_dict['Forecast']['XTide']['location'] = 'Tenants Harbor'
+        # point the forecaster at the actual tide binary so get_forecast()
+        # produces real events
+        prog = find_tide()
+        if prog is not None:
+            config_dict['Forecast']['XTide']['prog'] = prog
         method_id = 'XTide'
         dbm = weewx.manager.open_manager_with_config(
             config_dict, data_binding='forecast_binding',

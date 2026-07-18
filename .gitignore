@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Claude files stay out of this public repo
+CLAUDE.md
+.claude/

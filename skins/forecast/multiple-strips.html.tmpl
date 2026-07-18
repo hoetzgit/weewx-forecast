@@ -29,6 +29,9 @@ Display forecast data in multiple strips, one for each forecast source.
 <h2>Aeris</h2>
 <div id='aeris_strip'></div>
 
+<h2>Pirate Weather</h2>
+<div id='ds_strip'></div>
+
 #set global $forecast_strip_settings = dict()
 #set global $forecast_strip_settings['source'] = 'WU'
 #include "forecast_strip.inc"
@@ -38,12 +41,15 @@ Display forecast data in multiple strips, one for each forecast source.
 #include "forecast_strip.inc"
 #set global $forecast_strip_settings['source'] = 'Aeris'
 #include "forecast_strip.inc"
+#set global $forecast_strip_settings['source'] = 'DS'
+#include "forecast_strip.inc"
 
 <script>
 populate_strip('wu_strip', 'WU');
 populate_strip('nws_strip', 'NWS');
 populate_strip('ukmo_strip', 'UKMO');
 populate_strip('aeris_strip', 'Aeris');
+populate_strip('ds_strip', 'DS');
 </script>
 
 </body>

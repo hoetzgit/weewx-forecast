@@ -19,7 +19,7 @@ The following forecast sources are supported:
 - UK Met Office (UKMO)
 - Aeris Weather
 - World Weather Online (WWO)
-- Dark Sky (DS)
+- Pirate Weather (DS) -- the drop-in replacement for the shut-down Dark Sky
 - Zambretti
 - tide predictions using xtide
 
@@ -69,9 +69,10 @@ If you want WWO forecasts, obtain an api_key:
 
 https://developer.worldweatheronline.com/auth/register
 
-If you want DS forecasts, obtain an api_key:
+If you want Pirate Weather forecasts (the DS source, formerly Dark Sky),
+obtain an api_key:
 
-https://darksky.net/dev/register
+https://pirate-weather.apiable.io/
 
 If you want tide forecasts, xtide is required.  Determine your location:
 
@@ -199,7 +200,7 @@ Install it as follows:
            client_id = XXXXXXXXXXXXXXXX      # specify client identifier
            client_secret = XXXXXXXXXXXXXXXX  # specify client secret key
        [[DS]]
-           api_key = XXXXXXXXXXXXXXXX   # specify a dark sky api_key
+           api_key = XXXXXXXXXXXXXXXX   # specify a Pirate Weather api_key
        [[XTide]]
            location = Boston            # specify a location
    ```
@@ -213,6 +214,37 @@ Install it as follows:
 This will result in a skin called forecast with web pages that illustrate how
 to use the forecasts.  See comments in `forecast.py` for detailed customization
 options.
+
+## Enabling the comparison report
+
+weewx-forecast includes an optional `compare` skin that plots forecasts from
+several sources side by side.  It is installed but not enabled by default.  To
+turn it on, add a report to `[StdReport]` in weewx.conf:
+
+```
+    [[compare]]
+        skin = compare
+        HTML_ROOT = public_html/compare
+```
+
+Then restart WeeWX (or run `weectl report run compare`).  The comparison report
+requires:
+
+- Pillow (PIL) for image generation,
+- the DejaVu fonts (the `fonts-dejavu` package on Debian/Ubuntu),
+- more than one forecast source configured, and
+- a day or so of retained forecast history, so the per-source "forecast over
+  time" plots have data to draw.
+
+## Almanac
+
+If you would like a Skyfield-based almanac in WeeWX (accurate sun, moon, and
+planet rise/set and phase data), install
+[weewx-skyfield](https://github.com/chaunceygardiner/weewx-skyfield); it works
+alongside weewx-forecast.
+
+Do not use `weewx-skyfield-almanac` -- it introduced breaking changes that
+cause problems.  Use `weewx-skyfield`.
 
 ## Credits
 

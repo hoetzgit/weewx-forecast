@@ -1,28 +1,21 @@
 #!/usr/bin/env python
 # Copyright: 2016-2020 Matthew Wall
+# Copyright: 2020-2026 John A Kline (john@johnkline.com)
 # License: GPLv3
 
 """Tests for weewx forecast comparison generator."""
 
-from __future__ import with_statement
-import math
 import os
 import shutil
-import string
 import sys
 import time
 import unittest
 
 import configobj
 
-# if you try to run these tests on python 2.5 you might have to do a json
-# import as it is done in forecast.py
-import json
-
 import weewx
-import weewx.engine as engine
-
-import forecast
+import weewx.station
+import weewx.reportengine
 
 # this is where to look for the unit test data files
 TSTDIR = os.path.dirname(os.path.realpath(__file__))
@@ -126,7 +119,7 @@ class ForecastComparisonTest(unittest.TestCase):
 
     @staticmethod
     def _copy_database(tdir):
-        shutil.copyfile('test/forecast.sdb', tdir+'/forecast.sdb')
+        shutil.copyfile(TSTDIR + '/forecast.sdb', tdir+'/forecast.sdb')
 
     @staticmethod
     def _run_test(name, skin_contents):
