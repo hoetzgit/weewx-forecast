@@ -150,31 +150,31 @@ function toggle_hours(control, id) {
         <td class='col-outlook'></td>
 #end if
 #if $show_temp
-        <td class='col-temp'><img src='icons/thermometer-red.png' class='legend-img' alt='T' title='temperature' /><br/><span class='units'>$unit.label.outTemp</span></td>
+        <td class='col-temp'><img src='icons/thermometer-red.png' class='legend-img' alt='T' title='temperature'><br><span class='units'>$unit.label.outTemp</span></td>
 #end if
 #if $show_dewpoint
-        <td class='col-dewpoint'><img src='icons/thermometer-dewpoint.png' class='legend-img' alt='D' title='dewpoint' /><br/><span class='units'>$unit.label.dewpoint</span></td>
+        <td class='col-dewpoint'><img src='icons/thermometer-dewpoint.png' class='legend-img' alt='D' title='dewpoint'><br><span class='units'>$unit.label.dewpoint</span></td>
 #end if
 #if $show_humidity
-        <td class='col-humidity'><img src='icons/thermometer-blue.png' class='legend-img' alt='H' title='humidity' /><br/><span class='units'>$unit.label.outHumidity</span></td>
+        <td class='col-humidity'><img src='icons/thermometer-blue.png' class='legend-img' alt='H' title='humidity'><br><span class='units'>$unit.label.outHumidity</span></td>
 #end if
 #if $show_wind
-        <td class='col-wind' style='text-align:center'><img src='icons/flag.png' class='legend-img' alt='W' title='wind' /><br/><span class='units'>$unit.label.wind</span></td>
+        <td class='col-wind' style='text-align:center'><img src='icons/flag.png' class='legend-img' alt='W' title='wind'><br><span class='units'>$unit.label.wind</span></td>
 #end if
 #if $show_tides and $tides is not None and len($tides) > 0
-        <td class='col-tides'><img src='icons/water.png' class='legend-img' alt='tide' title='tides' /><br/><span class='units'>$unit.label.altitude</span></td>
+        <td class='col-tides'><img src='icons/water.png' class='legend-img' alt='tide' title='tides'><br><span class='units'>$unit.label.altitude</span></td>
 #end if
 #if $show_sun
-        <td class='col-sun'><img src='icons/sunriseset.png' class='legend-img' alt='S' title='sun' /><br/></td>
+        <td class='col-sun'><img src='icons/sunriseset.png' class='legend-img' alt='S' title='sun'><br></td>
 #end if
 #if $show_moon
 #if $almanac.hasExtras
-        <td class='col-moon'><img src='icons/moonriseset.png' class='legend-img' alt='M' title='moon' /><br/></td>
+        <td class='col-moon'><img src='icons/moonriseset.png' class='legend-img' alt='M' title='moon'><br></td>
 #end if
-        <td class='col-moonphase'><img src='icons/moonphase.png' class='legend-img' alt='MP' title='moon phase' /><br/></td>
+        <td class='col-moonphase'><img src='icons/moonphase.png' class='legend-img' alt='MP' title='moon phase'><br></td>
 #end if
 #if $show_pop
-        <td class='col-pop'><img src='icons/pop.png' class='legend-img' alt='PoP' title='probability of precipitation' /><br/><span class='units'>$unit.label.rain</span></td>
+        <td class='col-pop'><img src='icons/pop.png' class='legend-img' alt='PoP' title='probability of precipitation'><br><span class='units'>$unit.label.rain</span></td>
 #end if
 #if $show_precip
         <td class='col-precip'></td>
@@ -231,7 +231,7 @@ function toggle_hours(control, id) {
 #if $show_day or $show_date
         <td class='col-date' onclick="toggle_hours(this, '$smryid')">
 #if $show_day
-          <span class='day'>$summary.event_ts.format('%a')</span><br/>
+          <span class='day'>$summary.event_ts.format('%a')</span><br>
 #end if
 #if $show_date
           <span class='date'>$summary.event_ts.format('%d %b')</span>
@@ -242,18 +242,18 @@ function toggle_hours(control, id) {
         <td class='col-outlook'>
     #if $summary.clouds is not None
       #set $simg = 'icons/' + $summary.clouds + '.png'
-          <img class='outlook-img' src='$simg' alt='$summary.clouds' title='$forecast.label('Weather', $summary.clouds)' />
+          <img class='outlook-img' src='$simg' alt='$summary.clouds' title='$forecast.label('Weather', $summary.clouds)'>
     #end if
         </td>
 #end if
 #if $show_temp
-        <td class='col-temp'><span class='temphi'>$summary.tempMax.nolabel('%.0f')</span><br/><span class='templo'>$summary.tempMin.nolabel('%.0f')</span></td>
+        <td class='col-temp'><span class='temphi'>$summary.tempMax.nolabel('%.0f')</span><br><span class='templo'>$summary.tempMin.nolabel('%.0f')</span></td>
 #end if
 #if $show_dewpoint
-        <td class='col-dewpoint'>$summary.dewpointMax.nolabel('%.0f')<br/>$summary.dewpointMin.nolabel('%.0f')</td>
+        <td class='col-dewpoint'>$summary.dewpointMax.nolabel('%.0f')<br>$summary.dewpointMin.nolabel('%.0f')</td>
 #end if
 #if $show_humidity
-        <td class='col-humidity'>$summary.humidityMax.nolabel('%.0f',' ')<br/>$summary.humidityMin.nolabel('%.0f',' ')</td>
+        <td class='col-humidity'>$summary.humidityMax.nolabel('%.0f',' ')<br>$summary.humidityMin.nolabel('%.0f',' ')</td>
 #end if
 #if $show_wind
         <td class='col-wind'
@@ -290,10 +290,10 @@ function toggle_hours(control, id) {
 #if $show_sun
         <td class='col-sun'>
   #if $alm.hasExtras
-          $alm.sun.rise<br/>
+          $alm.sun.rise<br>
           $alm.sun.set
   #else
-          $alm.sunrise<br/>
+          $alm.sunrise<br>
           $alm.sunset
   #end if
         </td>
@@ -301,7 +301,7 @@ function toggle_hours(control, id) {
 #if $show_moon
   #if $alm.hasExtras
         <td class='col-moon'>
-          $alm.moon.rise<br/>
+          $alm.moon.rise<br>
           $alm.moon.set
         </td>
   #end if
@@ -314,13 +314,13 @@ function toggle_hours(control, id) {
   #if $summary.pop.raw is not None and $summary.pop.raw > 0
           $summary.pop.format('%.0f','')
   #end if
-<br/>
+<br>
   #if $summary.qpf.raw is not None and $summary.qpf.raw > 0
-          $summary.qpf.nolabel('%.2f','') <img class='pop-img' src='icons/raindrop.png' alt='raindrop'/>
+          $summary.qpf.nolabel('%.2f','') <img class='pop-img' src='icons/raindrop.png' alt='raindrop'>
   #end if
-<br/>
+<br>
   #if $summary.qsf.raw is not None and $summary.qsf.raw > 0
-          $summary.qsf.nolabel('%.2f','') <img class='pop-img' src='icons/snowflake.png' alt='snowflake'/>
+          $summary.qsf.nolabel('%.2f','') <img class='pop-img' src='icons/snowflake.png' alt='snowflake'>
   #end if
         </td>
 #end if
@@ -328,7 +328,7 @@ function toggle_hours(control, id) {
         <td class='col-precip'>
   #for $k in $summary.precip
     #set $precip_img = 'icons/' + $k + '.png'
-         <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)' />
+         <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)'>
   #end for
         </td>
 #end if
@@ -336,7 +336,7 @@ function toggle_hours(control, id) {
         <td class='col-obvis'>
   #for $k in $summary.obvis
     #set $obvis_img = 'icons/' + $k + '.png'
-         <img class='obvis-img' src='$obvis_img' alt='$k' title='$forecast.label('Weather', $k)' />
+         <img class='obvis-img' src='$obvis_img' alt='$k' title='$forecast.label('Weather', $k)'>
   #end for
         </td>
 #end if
@@ -356,7 +356,7 @@ function toggle_hours(control, id) {
   #set $hour = $period.event_ts.format('%H:%M')
       <tr>
 #if $show_day or $show_date
-        <td class='col-date'>$hour<br/></td>
+        <td class='col-date'>$hour<br></td>
 #end if
 #if $show_outlook
         <td class='col-outlook'>
@@ -366,7 +366,7 @@ function toggle_hours(control, id) {
     #else
       #set $outlook_img = 'icons/' + $period.clouds + 'n.png'
     #end if
-          <img class='outlook-img' src='$outlook_img' alt='$period.clouds' title='$forecast.label('Weather', $period.clouds)' />
+          <img class='outlook-img' src='$outlook_img' alt='$period.clouds' title='$forecast.label('Weather', $period.clouds)'>
   #end if
         </td>
 #end if
@@ -386,7 +386,7 @@ function toggle_hours(control, id) {
           style='text-align:center; background: url($winddir_img); background-repeat:no-repeat; background-position:center; background-size:32px;'
   #end if
             >
-          $period.windSpeed.nolabel('%.0f',' ') <span class='windgust'>$period.windGust.nolabel('%.0f',' ')</span>$period.windChar<br/>
+          $period.windSpeed.nolabel('%.0f',' ') <span class='windgust'>$period.windGust.nolabel('%.0f',' ')</span>$period.windChar<br>
         </td>
 #end if
 #if $show_tides and $tides is not None and len($tides) > 0
@@ -426,13 +426,13 @@ function toggle_hours(control, id) {
   #if $period.pop.raw is not None and $period.pop.raw > 0
           $period.pop.format('%.0f',' ')
   #end if
-<br/>
+<br>
   #if $period.qpf.raw is not None and $period.qpf.raw > 0
-          $period.qpf.nolabel('%.2f',' ') <img class='pop-img' src='icons/raindrop.png' alt='raindrop'/>
+          $period.qpf.nolabel('%.2f',' ') <img class='pop-img' src='icons/raindrop.png' alt='raindrop'>
   #end if
-<br/>
+<br>
   #if $period.qsf.raw is not None and $period.qsf.raw > 0
-          $period.qsf.nolabel('%.2f',' ') <img class='pop-img' src='icons/snowflake.png' alt='snowflake'/>
+          $period.qsf.nolabel('%.2f',' ') <img class='pop-img' src='icons/snowflake.png' alt='snowflake'>
   #end if
         </td>
 #end if
@@ -444,8 +444,8 @@ function toggle_hours(control, id) {
   #for $k,$v in $period.precip.items()
           <td>
     #set $precip_img = 'icons/' + $k + '.png'
-            <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)' />
-            <br/>
+            <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)'>
+            <br>
     #if $v != ''
 #set escaped_text = html.escape($forecast.label('Weather', $v+'q'))
             $escaped_text
@@ -463,7 +463,7 @@ function toggle_hours(control, id) {
         <td class='col-obvis'>
   #if $period.obvis is not None
     #set $obvis_img = 'icons/' + $period.obvis + '.png'
-          <img class='obvis-img' src='$obvis_img' alt='$period.obvis' title='$forecast.label('Weather', $period.obvis)' />
+          <img class='obvis-img' src='$obvis_img' alt='$period.obvis' title='$forecast.label('Weather', $period.obvis)'>
   #end if
         </td>
 #end if
@@ -486,11 +486,11 @@ function toggle_hours(control, id) {
  issued on $wts.
 #end if
 #if $show_tides and $tides is not None and len($tides) > 0
-      <br/>Tides for $tides[0].location issued on $tides[0].issued_ts
+      <br>Tides for $tides[0].location issued on $tides[0].issued_ts
 #end if
 #set $t1 = time.time()
 #set $elapsed = "%.3f" % ($t1 - $t0)
-     <br/>Report generated in $elapsed seconds.
+     <br>Report generated in $elapsed seconds.
     </p>
   </div>
 

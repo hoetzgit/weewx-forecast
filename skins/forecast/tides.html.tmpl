@@ -7,7 +7,7 @@
 <head>
   <title>Forecast Sampler: Tides</title>
   <meta charset="UTF-8">
-  <link rel='stylesheet' type='text/css' href='forecast.css'/>
+  <link rel='stylesheet' type='text/css' href='forecast.css'>
 </head>
 <body>
 
@@ -18,7 +18,7 @@
 #set $tides = $forecast.xtides
 #if len($tides) > 0
   #for $tide in $tides
-$tide.event_ts $tide.hilo $tide.offset<br/>
+$tide.event_ts $tide.hilo $tide.offset<br>
   #end for
 #else
 Tide forecast is not available.

@@ -89,7 +89,7 @@
       <div class='row-outlook'>
 #if $summary.clouds is not None
 #set $simg = 'icons/' + $summary.clouds + '.png'
-        <img class='outlook-img' src='$simg' alt='$summary.clouds' title='$forecast.label("Weather", $summary.clouds)' />
+        <img class='outlook-img' src='$simg' alt='$summary.clouds' title='$forecast.label("Weather", $summary.clouds)'>
 #end if
       </div>
       <div class='row-temp'>
@@ -110,7 +110,7 @@
       <div class='row-precip'>
   #for $k in $summary.precip
     #set $precip_img = 'icons/' + $k + '.png'
-      <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)' /><br/>
+      <img class='precip-img' src='$precip_img' alt='$k' title='$forecast.label('Weather', $k)'><br>
   #end for
       </div>
 #end if
@@ -118,7 +118,7 @@
       <div class='row-obvis'>
   #for $k in $summary.obvis
     #set $obvis_img = 'icons/' + $k + '.png'
-      <img class='obvis-img' src='$obvis_img' alt='$k' title='$forecast.label('Weather', $k)' /><br/>
+      <img class='obvis-img' src='$obvis_img' alt='$k' title='$forecast.label('Weather', $k)'><br>
   #end for
       </div>
 #end if

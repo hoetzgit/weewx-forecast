@@ -435,7 +435,7 @@ function create_summary(summary_data) {
   if(summary_data.issued_ts != '') {
     html += " issued on " + summary_data.issued_ts;
   }
-  html += "<br/>Report generated in " + summary_data.elapsed + " seconds.";
+  html += "<br>Report generated in " + summary_data.elapsed + " seconds.";
   d.innerHTML = html;
   return d;
 }
@@ -581,7 +581,7 @@ forecast_data.$strip_source = {
     'td_type': 'date',
     'values':[ #slurp
 #for $day in sorted($days)
-  #set $label = '<span class="day">%s</span><br/><span class="date">%s</span>' % ($days[$day]['dow'], $day)
+  #set $label = '<span class="day">%s</span><br><span class="date">%s</span>' % ($days[$day]['dow'], $day)
 '$label', #slurp
   #for $p in range($days[$day]['periods'] - 1)
 '', #slurp
@@ -592,7 +592,7 @@ forecast_data.$strip_source = {
 #for $day in sorted($days)
   #set $label = ''
   #if $days[$day]['periods'] > 3
-    #set $label = '<span class="day">%s</span><br/><span class="date">%s</span>' % ($days[$day]['dow'], $day)
+    #set $label = '<span class="day">%s</span><br><span class="date">%s</span>' % ($days[$day]['dow'], $day)
   #end if
 {'colspan': $days[$day]['periods'], 'label': '$label'}, #slurp
 #end for
@@ -801,7 +801,7 @@ forecast_data.$strip_source = {
   #set $tide_info = ''
   #for $tide in $tides
     #if $period.event_ts.raw <= $tide.event_ts.raw < $period.event_ts.raw + $period.duration
-      #set $tide_info = '<span class="tide_offset">%s</span><br/><span class="tide_date">%s</span>' % ($tide.offset.nolabel('%.1f'), $tide.event_ts.format('%H:%M'))
+      #set $tide_info = '<span class="tide_offset">%s</span><br><span class="tide_date">%s</span>' % ($tide.offset.nolabel('%.1f'), $tide.event_ts.format('%H:%M'))
     #end if
   #end for
 '$tide_info', #slurp

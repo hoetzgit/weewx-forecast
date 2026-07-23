@@ -7,7 +7,7 @@
 <head>
   <title>Forecast Sampler: Periods</title>
   <meta charset="UTF-8">
-  <link rel='stylesheet' type='text/css' href='forecast.css'/>
+  <link rel='stylesheet' type='text/css' href='forecast.css'>
 </head>
 <body>
 
@@ -30,9 +30,9 @@ illustrates the use of the forecast search list extension.
     #for $period in $periods
       #set $wts = $period.issued_ts
       #set $wloc = $period.location
-$period.event_ts $period.temp $forecast.label('Weather', $period.clouds)<br/>
+$period.event_ts $period.temp $forecast.label('Weather', $period.clouds)<br>
     #end for
-<br/><span class='issued'>Issued at $wts for $wloc</span>
+<br><span class='issued'>Issued at $wts for $wloc</span>
 </p>
   #else
 <p>No data for $source</p>

@@ -1,7 +1,14 @@
-Unreleased
+5.0.1
 * Fix the compare skin's obsolete doctype: index.html.tmpl declared an XHTML
   1.0 Strict doctype, which HTML validators flag as obsolete.  It now uses the
   HTML5 `<!DOCTYPE html>` (with `<html lang="en">`), matching the forecast skin.
+
+* Remove trailing slashes from void elements (`<br>`, `<img>`, `<link>`)
+  throughout the forecast and compare skins.  Under the HTML5 doctype the Nu
+  Html Checker flagged every self-closed void element ("Trailing slash on void
+  elements has no effect and interacts badly with unquoted attribute values"),
+  producing thousands of validator messages across the generated pages.  This
+  is purely a markup cleanup; the rendered output is unchanged.
 
 5.0
 * Dark Sky shut down its API.  The DS forecast source now points at Pirate
