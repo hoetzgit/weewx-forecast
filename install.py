@@ -11,7 +11,7 @@ def loader():
 class ForecastInstaller(ExtensionInstaller):
     def __init__(self):
         super(ForecastInstaller, self).__init__(
-            version="5.0.1",
+            version="5.1",
             name='forecast',
             description='Generate and display weather and tide forecasts.',
             author="Matthew Wall",

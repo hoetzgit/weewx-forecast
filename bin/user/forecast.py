@@ -528,6 +528,7 @@ import logging
 import os, errno
 import re
 import subprocess
+import tempfile
 import threading
 import time
 import urllib.request
@@ -549,7 +550,7 @@ import weeutil.weeutil
 from weewx.engine import StdService
 from weewx.cheetahgenerator import SearchList
 
-VERSION = "5.0.1"
+VERSION = "5.1"
 
 if weewx.__version__ < "4":
     raise weewx.UnsupportedFeature(
@@ -564,6 +565,19 @@ def loginf(msg):
 
 def logerr(msg):
     log.error('{}: {}'.format(threading.currentThread().getName(), msg))
+
+def reraise_if_terminate(e):
+    """weewxd stops by raising Terminate from its SIGTERM signal handler --
+    inside whatever the MAIN thread is executing at that instant.  A broad
+    'except Exception' on a main-thread path swallows it, and weewxd then
+    never learns it was asked to stop.  This extension's main-thread exposure
+    is do_forecast under 'single_thread = True' (the download and parse of a
+    forecast, which can take tens of seconds); the threaded default and report
+    generation both run on child threads, which never receive signals.
+    weewxd runs as __main__, so its Terminate class cannot be imported here
+    and is recognized by name."""
+    if type(e).__name__ == 'Terminate':
+        raise e
 
 def mkdir_p(path):
     """equivalent to 'mkdir -p'"""
@@ -1220,6 +1234,11 @@ class Forecast(StdService):
 
     def do_forecast(self, event):
         self.updating = True
+        # the failure message below reports dbm_dict, which is not assigned
+        # until the forecast has been fetched; without this, any failure in
+        # get_forecast raises UnboundLocalError from the handler and the real
+        # error is lost.
+        dbm_dict = None
         try:
             if self.delay:
                 time.sleep(self.delay)
@@ -1239,6 +1258,7 @@ class Forecast(StdService):
                 if self.vacuum:
                     Forecast.vacuum_database(dbm, self.method_id)
         except Exception as e:
+            reraise_if_terminate(e)
             logerr('{}: forecast failure: {}, dbm_dict: {}'.format(self.method_id, e, dbm_dict))
         finally:
             logdbg('%s: terminating thread' % self.method_id)
@@ -2674,8 +2694,10 @@ class WUForecast(Forecast):
                     msgs.append(msg)
                     logerr(msg)
                 except Exception as e1:
+                    reraise_if_terminate(e1)
                     logerr('KeyError: %s' % e1)
             except Exception as e:
+                reraise_if_terminate(e)
                 weeutil.logger.log_traceback(log.error, "    ****  ")
                 try:
                     msg = 'create_records_from_five_day: %s: failure in forecast period, day_index: %d, half_day_index: %d:  %s' % (
@@ -2683,6 +2705,7 @@ class WUForecast(Forecast):
                     msgs.append(msg)
                     logerr(msg)
                 except Exception as e1:
+                    reraise_if_terminate(e1)
                     logerr('Exception: %s' % e1)
 
         return records, msgs
@@ -4781,17 +4804,65 @@ and the following in-memory configuration for image generator:
 class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
     """Generate plots that contain data from multiple forecasts"""
 
-    DBFN = '/var/tmp/fpg.sdb'
-    MANAGER_DICT = {
-        'database': 'fpg',
-        'manager': 'weewx.manager.DaySummaryManager',
-        'table_name': 'archive',
-        'database_dict': {
-            'database_name': DBFN,
-            'driver': 'weedb.sqlite'}}
+    DBNAME = 'fpg.sdb'
+
+    def temp_db_path(self):
+        """Where to put the scratch database this generator copies data into.
+
+        It goes beside the station's own sqlite databases (SQLITE_ROOT), not
+        in /var/tmp: the file is deleted and recreated on every run, so two
+        weewx instances on one machine must not share it -- and they cannot,
+        since each has its own SQLITE_ROOT.  weewx must be able to write there
+        already, since that is where it keeps the archive.  It also stays out
+        of a sticky, world-writable directory, where a file left by another
+        user cannot be removed.
+
+        A MySQL-only station has no SQLITE_ROOT, and WEEWX_ROOT is no place to
+        write -- on a package install it is /etc/weewx.  Fall back to the
+        system temp directory, with the pid in the name so that two instances
+        still cannot collide.
+        """
+        try:
+            root = self.config_dict['DatabaseTypes']['SQLite']['SQLITE_ROOT']
+        except KeyError:
+            return os.path.join(tempfile.gettempdir(),
+                                'fpg-%d.sdb' % os.getpid())
+        path = os.path.join(root, self.DBNAME)
+        if not os.path.isabs(path):
+            # reports are generated with the cwd set to the skin directory, so
+            # a relative root has to be anchored explicitly
+            path = os.path.join(self.config_dict.get('WEEWX_ROOT', ''), path)
+        return path
+
+    @staticmethod
+    def manager_dict(dbfn):
+        """Manager configuration for the scratch database at dbfn."""
+        return {
+            'database': 'fpg',
+            'manager': 'weewx.manager.DaySummaryManager',
+            'table_name': 'archive',
+            'database_dict': {
+                'database_name': dbfn,
+                'driver': 'weedb.sqlite'}}
+
+    @staticmethod
+    def _stopping(stop_event):
+        """weewx 5.5 and later set this event when weewxd is shutting down."""
+        if stop_event is not None and stop_event.is_set():
+            loginf('stop event set: abandoning forecast plot generation')
+            return True
+        return False
 
     def run(self):
         fc_dict = self.skin_dict.get('ForecastPlotGenerator', {})
+
+        # weewx 5.5 and later hand each generator a threading.Event that is
+        # set when weewxd is shutting down; generators are expected to quit as
+        # soon as they can.  weewx 5.4 and earlier never set the attribute, so
+        # fetch it defensively and treat 'no event' as 'keep going'.
+        stop_event = getattr(self, 'stop_event', None)
+
+        dbfn = self.temp_db_path()
 
         # for each observation we need a source and issued_since.  if specified
         # for the observation, then use it.  otherwise fallback to whatever is
@@ -4824,11 +4895,16 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
         min_ts = 9999999999
         max_ts = 0
 
+        if self._stopping(stop_event):
+            return
+
         # scan the old database for the issued timestamps that we need to plot
         logdbg("scan forecast database")
         dbm_dict = weewx.manager.get_manager_dict_from_config(self.config_dict, self.config_dict['Forecast']['data_binding'])
         with weewx.manager.open_manager(dbm_dict) as src_dbm:
             for p in request:
+                if self._stopping(stop_event):
+                    return
                 request[p]['plots'] = []
                 for s in request[p]['source']:
                     # get list of issued timestamps
@@ -4851,14 +4927,14 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
                     logdbg("found {}:{}: {}".format(p, s, issued))
 
             try:
-                os.remove(self.DBFN)
-                logdbg('delete leftover temporary database %s' % self.DBFN)
+                os.remove(dbfn)
+                logdbg('delete leftover temporary database %s' % dbfn)
             except OSError:
                 pass
 
             # set up and create the temporary database
             logdbg("create schema for temporary database")
-            dst_dbm_dict = dict(self.MANAGER_DICT)
+            dst_dbm_dict = self.manager_dict(dbfn)
             dst_dbm_dict['schema'] = [
                 ('dateTime', 'INTEGER NOT NULL PRIMARY KEY'),
                 ('interval', 'INTEGER NOT NULL'),
@@ -4867,7 +4943,7 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
                 for (label, data_type, issued_ts, src) in request[p]['plots']:
                     if (data_type, 'REAL') not in dst_dbm_dict['schema']:
                         dst_dbm_dict['schema'].append((data_type, 'REAL'))
-            logdbg("create temporary database %s" % self.DBFN)
+            logdbg("create temporary database %s" % dbfn)
             with weewx.manager.open_manager(dst_dbm_dict, initialize=True):
                 pass
 
@@ -4881,6 +4957,8 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
             with weewx.manager.open_manager(dst_dbm_dict) as dst_dbm:
                 for p in request:
                     for (_, data_type, issued_ts, src) in request[p]['plots']:
+                        if self._stopping(stop_event):
+                            return
                         sql = "select event_ts,{} from archive where issued_ts={} and method='{}'".format(request[p]['data_type'], issued_ts, src)
                         data = []
                         logdbg("get data for %s from source %s at %s" %
@@ -4903,6 +4981,21 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
                             if ts > max_ts:
                                 max_ts = ts
                         completed += 1
+
+        if max_ts <= min_ts:
+            # Nothing usable came out of the forecast database: the sources
+            # have not been downloaded yet, they are misspelled, or every
+            # issue is older than issued_since.  time_length would then be
+            # zero or negative, which makes the image generator throw
+            # ViolatedPrecondition ("scaletime called with tmax <= tmin") for
+            # every plot, once per report cycle.  Say so and quit instead.
+            loginf("generator abort: no forecast data to plot"
+                   " (check the source and issued_since settings)")
+            try:
+                os.remove(dbfn)
+            except OSError:
+                pass
+            return
 
         logdbg("set up for image generation")
         # allocate a dictionary for the image generator configuration
@@ -4946,20 +5039,28 @@ class ForecastPlotGenerator(weewx.reportengine.ReportGenerator):
                 'manager': 'weewx.manager.DaySummaryManager'}}
         cfg_dict['Databases'] = {
             'fpg': {
-                'database_name': 'fpg.sdb',
+                'database_name': os.path.basename(dbfn),
                 'database_type': 'SQLiteTMP'}}
         cfg_dict['DatabaseTypes'] = {
             'SQLiteTMP': {
                 'driver': 'weedb.sqlite',
-                'SQLITE_ROOT': '/var/tmp'}}
+                'SQLITE_ROOT': os.path.dirname(dbfn)}}
+
+        if self._stopping(stop_event):
+            return
 
         logdbg('run the image generator')
         g = weeutil.weeutil._get_object('weewx.imagegenerator.ImageGenerator')(
             cfg_dict, img_dict, max_ts, self.first_run, self.stn_info)
+        if stop_event is not None and hasattr(g, 'stop_event'):
+            # weewx 5.5 and later: hand the flag down so the image generator
+            # quits between plots -- that is where the time goes.  weewx 5.4
+            # and earlier have no such attribute and never look for one.
+            g.stop_event = stop_event
         g.run()
 
-        logdbg('delete temporary database %s' % self.DBFN)
-        os.remove(self.DBFN)
+        logdbg('delete temporary database %s' % dbfn)
+        os.remove(dbfn)
 
 
 # simple interface for manual downloads and diagnostics

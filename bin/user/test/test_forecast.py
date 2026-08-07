@@ -2188,6 +2188,41 @@ $ts $a.sunrise $a.sunset $gmstr
 
         self.assertNotEqual(size1, size2)
 
+    # weewxd stops by raising Terminate from its SIGTERM handler, inside
+    # whatever the main thread is running.  With 'single_thread = True' that
+    # can be do_forecast, whose broad handler must hand Terminate back -- it
+    # is a shutdown request, not a forecast failure.
+
+    class Terminate(Exception):
+        """Stands in for weewxd's Terminate, which is recognized by name
+        (weewxd runs as __main__, so the real class cannot be imported)."""
+
+    class FailingForecast(forecast.Forecast):
+        """A forecaster whose download raises, with only the attributes
+        do_forecast touches."""
+        def __init__(self, exc):
+            self.exc = exc
+            self.updating = False
+            self.delay = 0
+            self.method_id = 'TEST'
+
+        def get_forecast(self, event):
+            raise self.exc
+
+    def test_terminate_is_not_swallowed(self):
+        fc = ForecastTest.FailingForecast(ForecastTest.Terminate())
+        with self.assertRaises(ForecastTest.Terminate):
+            fc.do_forecast(None)
+        self.assertFalse(fc.updating)
+
+    def test_download_failure_is_logged_not_raised(self):
+        """The guard must not change handling of real failures -- and the
+        handler itself must not blow up: it reports dbm_dict, which is unset
+        when the failure comes from get_forecast."""
+        fc = ForecastTest.FailingForecast(ValueError('download failed'))
+        fc.do_forecast(None)  # must not raise
+        self.assertFalse(fc.updating)
+
 # use this to run individual tests while debugging
 def suite(testname):
     tests = [testname]

@@ -1,3 +1,45 @@
+5.1
+* Honor the shutdown flag that weewx 5.5 hands to report generators.  The
+  compare skin's ForecastPlotGenerator now checks it while scanning the
+  forecast database and while collecting data, and passes it on to weewx's
+  image generator, which checks it between plots.  Shutting weewxd down in
+  the middle of a report no longer waits for every comparison plot to be
+  drawn.  Earlier weewx releases have no such flag and are unaffected.
+
+* Fix weewxd being unable to shut down during a forecast update when
+  `single_thread = True`.  weewxd stops by raising Terminate from its SIGTERM
+  handler, inside whatever the main thread is running; do_forecast's broad
+  exception handler swallowed it as a forecast failure.  Terminate is now
+  handed back.  The threaded default (single_thread = False) was never
+  affected -- signals only reach the main thread.
+
+* Fix the error path in do_forecast: a failure in get_forecast (a download
+  error, say) raised UnboundLocalError from the handler itself -- it reports
+  dbm_dict, which is not assigned until after the forecast is fetched -- so
+  the real error was lost and the exception escaped instead of being logged.
+
+* Fix the compare report failing whenever there is no forecast data to plot:
+  a source that has not been downloaded yet, a misspelled source, or an
+  issued_since that excludes every issue.  The image generator was handed a
+  zero or negative time span and threw "scaletime called with tmax <= tmin"
+  for every plot, once per report cycle.  The generator now logs that it has
+  nothing to plot and stops.
+
+* The comparison generator's scratch database now lives beside the station's
+  own databases (SQLITE_ROOT, e.g. /home/weewx/archive/fpg.sdb) instead of at
+  the fixed /var/tmp/fpg.sdb.  It is deleted and recreated on every run, so
+  two weewx instances on one machine used to fight over the one file; now
+  each has its own.  It also no longer sits in a sticky, world-writable
+  directory, where a file left behind by another user could not be removed.
+  Nothing to configure.  A MySQL-only station has no SQLITE_ROOT; it gets a
+  pid-stamped file in the system temp directory instead (WEEWX_ROOT is no
+  place to write -- on a package install it is /etc/weewx).
+
+* The comparison generator's tests (test_cmp.py) now build a forecast
+  database with real data and check that the expected plots come out.  They
+  ran against an empty database before, so every one of them passed while
+  generating nothing.
+
 5.0.1
 * Fix the compare skin's obsolete doctype: index.html.tmpl declared an XHTML
   1.0 Strict doctype, which HTML validators flag as obsolete.  It now uses the
